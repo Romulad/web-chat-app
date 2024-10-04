@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 
-app = FastAPI()
+from .database import db_lifespan
+from .routers.auth import router as auth_router
 
-@app.get("/")
-async def get_data():
-    return "Get your data"
+app = FastAPI(lifespan=db_lifespan)
+app.include_router(auth_router)
