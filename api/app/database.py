@@ -1,9 +1,11 @@
 from contextlib import asynccontextmanager
+from collections import namedtuple
 
 import motor.motor_asyncio
 from fastapi import FastAPI
 
 from .configs import settings
+
 
 @asynccontextmanager
 async def db_lifespan(app: FastAPI):
@@ -13,3 +15,8 @@ async def db_lifespan(app: FastAPI):
     yield
 
     app.mongo_client.close()
+
+
+db_collections = ['users', 'user_friends', 'chat_messages', 'user_chat_histories']
+DbCollectionNames = namedtuple("DbCollectionNames", db_collections)
+db_collection_names = DbCollectionNames(*db_collections)
