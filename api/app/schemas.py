@@ -1,17 +1,27 @@
-from datetime import datetime
+from datetime import datetime, timezone
 
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field, field_serializer
+
+from .utils.security import hash_passord
 
 
 class User(BaseModel):
     email: EmailStr
-    first_name: str
+    first_name: str = Field(min_length=3)
     last_name: str = ""
-    created_at: datetime = None
+    created_at: datetime = datetime.now(timezone.utc)
+
+    @field_serializer('created_at')
+    def serialize_created_at(self, created_at: datetime):
+        return created_at.isoformat()
 
 
 class UserWithPassword(User):
-    password: str
+    password: str = Field(min_length=8)
+
+    @field_serializer('password')
+    def serialize_password(self, password: str):
+        return hash_passord(password)
 
 
 class UserFriend(BaseModel):
