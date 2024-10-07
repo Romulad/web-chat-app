@@ -1,6 +1,10 @@
 from datetime import datetime, timezone
+from typing_extensions import Annotated
 
-from pydantic import BaseModel, EmailStr, Field, field_serializer
+from pydantic import (
+    BaseModel, EmailStr, Field, field_serializer, field_validator
+)
+from pydantic.functional_validators import BeforeValidator
 
 from .utils.security import hash_passord
 
@@ -22,6 +26,10 @@ class UserWithPassword(User):
     @field_serializer('password')
     def serialize_password(self, password: str):
         return hash_passord(password)
+
+
+class SerializedUser(User):
+    id: Annotated[str, BeforeValidator(str)] = Field(default="", validation_alias="_id", )
 
 
 class UserFriend(BaseModel):

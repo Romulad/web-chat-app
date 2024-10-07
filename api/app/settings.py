@@ -1,0 +1,5 @@
+MONGODB_DATABASE_NAME = "chat_app"
+MONGODB_DEFAULT_URL = "mongodb://localhost:27017"
+
+IN_PRODUCTION = False
+TESTING = True
