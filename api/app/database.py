@@ -9,7 +9,7 @@ from fastapi import FastAPI
 from .configs import settings
 from .settings import (
     MONGODB_DATABASE_NAME, IN_PRODUCTION, MONGODB_DEFAULT_URL,
-    TESTING
+    TESTING, MONGODB_TEST_DATABASE_NAME
 )
 
 
@@ -26,8 +26,8 @@ async def db_lifespan(app: FastAPI):
 
 @asynccontextmanager
 async def test_db_lifespan(app: FastAPI):
-    print("Creating test database...")
-    db_name = "test_database"
+    print("\nCreating test database...\n")
+    db_name = MONGODB_TEST_DATABASE_NAME
     app.state.mongo_client = motor.motor_asyncio.AsyncIOMotorClient(
         MONGODB_DEFAULT_URL
     )
@@ -35,7 +35,7 @@ async def test_db_lifespan(app: FastAPI):
 
     yield
 
-    print("Deleting test database...")
+    print("\n\nDeleting test database...\n")
     await app.state.mongo_client.drop_database(db_name)
     app.state.mongo_client.close()
 
