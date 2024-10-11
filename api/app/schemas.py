@@ -28,25 +28,34 @@ class UserWithPassword(User):
         return hash_passord(password)
 
 
-class SerializedUser(User):
+class UserWithId(User):
     id: Annotated[str, BeforeValidator(str)] = Field(default="", validation_alias="_id", )
 
 
 class UserFriend(BaseModel):
-    user_id: str
-    friend_id: str
+    first_user_id: str
+    second_user_id: str
     chat_id: str
     relation_start_at: datetime = None
+    inviter_user_id: str
 
 
-class ChatHistory(BaseModel):
+class ChatMessage(BaseModel):
     chat_id: str
     sender_id: str
     receiver_id: str
+    read: bool = False
+    text: str = ""
+    read_at: datetime = None
     created_at: datetime
 
 
-class ChatMessage(ChatHistory):
-    text: str = ""
-    read: bool = False
-    read_at: datetime = None
+class ChatMetaData(BaseModel):
+    id: Annotated[str, BeforeValidator(str)] = Field(default="", validation_alias="_id", )
+    chat_id: str
+    unread_count: int = 0
+    unread_user_id: str = ""
+    first_user_id: str
+    second_user_id: str
+    last_message: str
+    last_updated: datetime

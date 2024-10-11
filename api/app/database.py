@@ -46,10 +46,10 @@ def get_db_lifespan():
         return db_lifespan
 
 
-DbCollectionNames = namedtuple("DbCollectionNames", ['users', 'user_friends', 'chat_messages', 'user_chat_histories'])
+DbCollectionNames = namedtuple("DbCollectionNames", ['users', 'user_friends', 'chat_messages', 'chat_metadata'])
 db_collection_names = DbCollectionNames(
     users='users',
     user_friends='user_friends',
     chat_messages='chat_messages',
-    user_chat_histories='user_chat_histories'
+    chat_metadata='chat_metadata'
 )

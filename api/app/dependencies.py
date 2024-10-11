@@ -7,6 +7,7 @@ from bson import ObjectId
 from .utils.db import get_db_from_request
 from .utils.security import validate_user_token
 from .database import db_collection_names
+from .schemas import UserWithId
 
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/sign-in")
@@ -34,4 +35,4 @@ async def get_user(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    return user_data
+    return UserWithId(**user_data)

@@ -3,7 +3,7 @@ from typing_extensions import Annotated
 from fastapi import APIRouter, Request, status, Depends, HTTPException
 from fastapi.security import OAuth2PasswordRequestForm
 
-from ..schemas import UserWithPassword, SerializedUser
+from ..schemas import UserWithPassword, UserWithId
 from ..database import db_collection_names
 from ..response_model import Token
 from ..utils.security import create_user_token, verify_password
@@ -57,6 +57,6 @@ async def login(
     return {"access_token": access_token}
 
 
-@router.get("/me", response_model=SerializedUser)
+@router.get("/me", response_model=UserWithId)
 async def about_user(user: Annotated[UserWithPassword, Depends(get_user)]):
     return user
