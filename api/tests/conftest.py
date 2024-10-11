@@ -13,7 +13,7 @@ def client():
         yield client
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture(scope="function", autouse=True)
 def db():
     mongo_client = pymongo.MongoClient(MONGODB_DEFAULT_URL)
     db_instance = mongo_client[MONGODB_TEST_DATABASE_NAME]
@@ -22,5 +22,5 @@ def db():
 
     for collection_name in db_instance.list_collection_names():
         db_instance.drop_collection(collection_name)
-
+    
     mongo_client.close()

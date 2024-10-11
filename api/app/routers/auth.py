@@ -1,23 +1,21 @@
 from typing_extensions import Annotated
 
 from fastapi import APIRouter, Request, status, Depends, HTTPException
-from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
-from motor.motor_asyncio import AsyncIOMotorCollection, AsyncIOMotorDatabase
+from fastapi.security import OAuth2PasswordRequestForm
 
-from ..schemas import UserWithPassword
+from ..schemas import UserWithPassword, SerializedUser
 from ..database import db_collection_names
-from .response_model import Token
+from ..response_model import Token
 from ..utils.security import create_user_token, verify_password
-
+from ..utils.db import get_db_from_request
+from ..dependencies import get_user
 
 router = APIRouter(prefix="/auth")
-
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/sign-in")
 
 
 @router.post("/sign-up", response_model=Token, status_code=status.HTTP_201_CREATED)
 async def create_account(user: UserWithPassword, request: Request):
-    collection : AsyncIOMotorCollection = request.app.state.db.get_collection(
+    collection = get_db_from_request(request).get_collection(
         db_collection_names.users
     )
 
@@ -44,7 +42,7 @@ async def login(
     user_email = form_data.username
     user_password = form_data.password
 
-    db : AsyncIOMotorDatabase = request.app.state.db
+    db = get_db_from_request(request)
     user_collection = db.get_collection(db_collection_names.users)
 
     if not (user_data := await user_collection.find_one({"email": user_email})):
@@ -57,3 +55,8 @@ async def login(
     access_token = create_user_token(user_id)
 
     return {"access_token": access_token}
+
+
+@router.get("/me", response_model=SerializedUser)
+async def about_user(user: Annotated[UserWithPassword, Depends(get_user)]):
+    return user
