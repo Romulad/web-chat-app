@@ -1,7 +1,7 @@
 import datetime
 from pydantic import BaseModel
 
-from .schemas import UserWithId
+from .schemas import UserWithId, ChatMessage
 
 class Token(BaseModel):
     access_token: str
@@ -18,4 +18,22 @@ class ChatHistory(BaseModel):
 
 
 class ChatHistories(BaseModel):
-    datas: list[ChatHistory] = []
+    data: list[ChatHistory] = []
+
+
+class ChatMessages(BaseModel):
+    data: list[ChatMessage]
+
+
+class SocketDataSchema(BaseModel):
+    type: str = "msg"
+    data: str | bytes
+    chat_id: str = ""
+    to_user_id: str = ""
+
+
+class ChatResponse(BaseModel):
+    chat_id: str
+    msg: str
+    sender_id: str
+    

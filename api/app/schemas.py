@@ -2,7 +2,7 @@ from datetime import datetime, timezone
 from typing_extensions import Annotated
 
 from pydantic import (
-    BaseModel, EmailStr, Field, field_serializer, field_validator
+    BaseModel, EmailStr, Field, field_serializer
 )
 from pydantic.functional_validators import BeforeValidator
 
@@ -39,6 +39,10 @@ class UserFriend(BaseModel):
     relation_start_at: datetime = None
     inviter_user_id: str
 
+    @field_serializer('relation_start_at')
+    def serialize_relation_start_at(self, relation_start_at: datetime | None):
+        return relation_start_at.isoformat() if relation_start_at else relation_start_at
+
 
 class ChatMessage(BaseModel):
     chat_id: str
@@ -46,8 +50,16 @@ class ChatMessage(BaseModel):
     receiver_id: str
     read: bool = False
     text: str = ""
-    read_at: datetime = None
-    created_at: datetime
+    read_at: datetime | None = None
+    created_at: datetime = datetime.now(timezone.utc)
+
+    @field_serializer('created_at')
+    def serialize_created_at(self, created_at: datetime):
+        return created_at.isoformat()
+
+    @field_serializer('read_at')
+    def serialize_read_at(self, read_at: datetime | None):
+        return read_at.isoformat() if read_at else read_at
 
 
 class ChatMetaData(BaseModel):
@@ -59,3 +71,7 @@ class ChatMetaData(BaseModel):
     second_user_id: str
     last_message: str
     last_updated: datetime
+
+    @field_serializer('last_updated')
+    def serialize_last_updated(self, last_updated: datetime):
+        return last_updated.isoformat()

@@ -1,16 +1,22 @@
+import datetime
+
 from typing_extensions import Annotated
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, Request, WebSocket, WebSocketDisconnect
 from bson import ObjectId
 
-from ..dependencies import get_user
-from ..schemas import UserWithId, ChatMetaData
-from ..response_model import ChatHistories
+from ..dependencies import get_user, get_socket_user
+from ..schemas import UserWithId, ChatMetaData, ChatMessage
+from ..response_model import ChatHistories, ChatMessages
 from ..utils.db import get_db_from_request
 from ..database import db_collection_names
+from ..utils.chat_manager import chat_manager
+
 
 router = APIRouter(prefix="/chat")
 
+
+connected_users = []
 
 @router.get("/histories", response_model=ChatHistories)
 async def user_chat_histories(
@@ -48,12 +54,57 @@ async def user_chat_histories(
         data.update({"friend": friend_data})
         datas.append(data)
         
-    return {"datas": datas}
+    return {"data": datas}
         
 
-@router.get("/messages/{chat_id}")
+@router.websocket("/ws")
 async def chat_messages(
-    user: Annotated[UserWithId, Depends(get_user)],
-    chat_id: str,
+    websocket: WebSocket,
+    user: Annotated[UserWithId, Depends(get_socket_user)]
 ):
-    pass
+    await websocket.accept()
+    try:
+        while True:
+            await chat_manager.manage_new_msg(user, websocket)
+    except WebSocketDisconnect:
+        chat_manager.disconnect_user(user.id, websocket)
+
+
+@router.get("/messages/{chat_id}", response_model=ChatMessages)
+async def get_chat_messages(
+    chat_id: str,
+    request: Request,
+    user: Annotated[UserWithId, Depends(get_user)]
+):
+    db = get_db_from_request(request)
+    mta_collection = db.get_collection(db_collection_names.chat_metadata)
+    msg_collection = db.get_collection(db_collection_names.chat_messages)
+
+    unread_messages = await msg_collection.find({
+        "$and": [
+            {"chat_id": chat_id},
+            {"receiver_id": user.id},
+            {"read": False}
+        ]
+    }).to_list(1000)
+    for unread_msg in unread_messages:
+        unread_id = unread_msg.get('_id')
+        await msg_collection.update_one(
+            {"_id": unread_id},
+            {"$set": {"read": True, "read_at": datetime.datetime.now(datetime.timezone.utc).isoformat()}}
+        )
+
+    chat_metadata = await mta_collection.find_one({'chat_id': chat_id})
+    if chat_metadata and chat_metadata.get('unread_user_id') == user.id:
+        mta_id = chat_metadata.get('_id')
+        await mta_collection.update_one(
+            {"_id": mta_id}, 
+            {"$set": {"unread_count": 0, "unread_user_id": ""}}
+        )
+
+    messages = await msg_collection.find(
+        {"chat_id": chat_id}
+    ).to_list(100)
+
+    return {"data": messages}
+
