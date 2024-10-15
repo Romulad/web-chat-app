@@ -11,7 +11,7 @@ from ..app.schemas import UserWithPassword, ChatMetaData, ChatMessage
 from ..app.database import db_collection_names
 from ..app.utils.security import create_user_token
 from .utils import get_auth_header
-from ..app.response_model import SocketDataSchema
+from ..app.req_resp_models import SocketDataSchema
 
 
 class TestChatHistoryRoute(AuthenticationTests):

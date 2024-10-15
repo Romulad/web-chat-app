@@ -37,3 +37,9 @@ class ChatResponse(BaseModel):
     msg: str
     sender_id: str
     
+
+class OpenChatInitSchema(BaseModel):
+    chat_id: str
+    initiator_id: str
+    initiator_name: str
+    initiation_date: str = ""

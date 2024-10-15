@@ -7,10 +7,10 @@ from bson import ObjectId
 
 from ..dependencies import get_user, get_socket_user
 from ..schemas import UserWithId, ChatMetaData, ChatMessage
-from ..response_model import ChatHistories, ChatMessages
+from ..req_resp_models import ChatHistories, ChatMessages
 from ..utils.db import get_db_from_request
 from ..database import db_collection_names
-from ..utils.chat_manager import chat_manager
+from ..chat_tools.chat_manager import chat_manager
 
 
 router = APIRouter(prefix="/chat")

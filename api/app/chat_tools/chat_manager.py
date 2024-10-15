@@ -3,9 +3,9 @@ import datetime
 from fastapi import WebSocket, WebSocketException, status
 
 from ..schemas import UserWithId, ChatMessage, ChatMetaData
-from ..response_model import SocketDataSchema, ChatResponse
-from .constants import socket_msg_type
-from .db import get_db_from_request
+from ..req_resp_models import SocketDataSchema, ChatResponse
+from ..utils.constants import socket_msg_type
+from ..utils.db import get_db_from_request
 from ..database import db_collection_names
 
 

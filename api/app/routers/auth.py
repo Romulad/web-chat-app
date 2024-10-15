@@ -5,7 +5,7 @@ from fastapi.security import OAuth2PasswordRequestForm
 
 from ..schemas import UserWithPassword, UserWithId
 from ..database import db_collection_names
-from ..response_model import Token
+from ..req_resp_models import Token
 from ..utils.security import create_user_token, verify_password
 from ..utils.db import get_db_from_request
 from ..dependencies import get_user
