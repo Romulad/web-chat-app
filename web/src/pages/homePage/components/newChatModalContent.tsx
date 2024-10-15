@@ -18,9 +18,10 @@ import { getOpenChatPath } from "../../../lib/paths";
 export default function NewChatModalContent(
     {toggleNewChatModal} : {toggleNewChatModal: (()=>void)}
 ){
+    const userInfo = getUserOpenChatInfo();
     const [showLinkView, setShowLinkView] = useState(false);
     const [chatLink, setChatLink] = useState('');
-    const [ownerName, setOwnerName] = useState<string>("");
+    const [ownerName, setOwnerName] = useState<string>(userInfo?.name || "");
     const [inputError, setInputError] = useState<string>("");
     const [creatingChat, setCreatingChat] = useState(false);
 
@@ -29,10 +30,9 @@ export default function NewChatModalContent(
     }
 
     function getUserChatIds(){
-        const userData = getUserOpenChatInfo();
         return {
             chatId: generateChatId(),
-            initiatorId: userData ? userData.userId : generateUserId(ownerName)
+            initiatorId: userInfo ? userInfo.userId : generateUserId(ownerName)
         }
     }
 
@@ -50,7 +50,8 @@ export default function NewChatModalContent(
         }
 
         const idsData = getUserChatIds();
-        setUserOpenChatInfo({name: ownerName, userId: idsData.initiatorId});
+        if(ownerName !== userInfo?.name)
+            setUserOpenChatInfo({name: ownerName, userId: idsData.initiatorId});
 
         setCreatingChat(true);
         const {reqState, respData} = await createNewOpenChat(
@@ -92,9 +93,9 @@ export default function NewChatModalContent(
     const linkView = (
         <>
         <LabelInput 
-        label="Chat link:"
+        label="Share this link to invite others to join:"
         name="chat-link"
-        value={chatLink}
+        value={location.host + chatLink}
         readOnly/>
 
         <div className="flex justify-between mt-4 flex-wrap gap-3">

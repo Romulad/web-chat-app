@@ -37,7 +37,8 @@ export default function HomePage(){
         <div className={`w-full min-[450px]:w-[400px] fixed bg-white rounded-lg p-4 top-1/2 left-1/2 z-[1000]
         -translate-x-1/2 -translate-y-1/2 ${showNewChatModal ? "" : "hidden"}`}>
             <NewChatModalContent 
-            toggleNewChatModal={toggleNewChatModal}/>
+            toggleNewChatModal={toggleNewChatModal}
+            />
         </div>
         </>
     )

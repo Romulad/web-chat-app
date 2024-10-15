@@ -3,11 +3,13 @@ import { createBrowserRouter } from "react-router-dom";
 import { 
   ErrorPage,
   CreateAccountPage,
-  HomePage
+  HomePage,
+  OpenChatChatPage
 } from "./pages";
 import { 
   createAccountPath, 
-  homePath
+  homePath,
+  openChatPath
 } from "./lib/paths";
 
 
@@ -20,6 +22,11 @@ const router = createBrowserRouter([
   {
     path: createAccountPath,
     element: <CreateAccountPage />,
+    errorElement: <ErrorPage />,
+  },
+  {
+    path: openChatPath,
+    element: <OpenChatChatPage />,
     errorElement: <ErrorPage />,
   },
 ]);
