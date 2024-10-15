@@ -5,6 +5,7 @@ interface LabelInputProps extends React.InputHTMLAttributes<HTMLInputElement>{
     name: string;
     type?: string; 
     placeholder?: string;
+    inputError?: string;
 }
 
 export default function LabelInput(
@@ -13,6 +14,7 @@ export default function LabelInput(
         name,
         type="text",
         placeholder="",
+        inputError,
         ...attrs
     } : LabelInputProps
 ){
@@ -26,7 +28,10 @@ export default function LabelInput(
             type={type} name={name} id={name}
             className="block w-full mt-3 border rounded-lg p-3 bg-slate-50" 
             placeholder={placeholder}
-            {...attrs}/>    
+            {...attrs}/> 
+
+            {inputError && 
+            <p className="text-red-500 text-sm mt-2">{inputError}</p>}  
         </div>
     )
 }
