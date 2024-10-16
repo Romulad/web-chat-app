@@ -1,8 +1,9 @@
 from datetime import datetime, timezone
 from typing_extensions import Annotated
 
+from fastapi import WebSocket
 from pydantic import (
-    BaseModel, EmailStr, Field, field_serializer
+    BaseModel, EmailStr, Field, field_serializer, ConfigDict
 )
 from pydantic.functional_validators import BeforeValidator
 
@@ -75,3 +76,21 @@ class ChatMetaData(BaseModel):
     @field_serializer('last_updated')
     def serialize_last_updated(self, last_updated: datetime):
         return last_updated.isoformat()
+    
+class OpenChatUser(BaseModel):
+    user_id: str
+    is_owner: bool
+    name: str
+    websockets: list[WebSocket] = []
+    created_at: str
+
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
+
+class OpenChatRequestJoin(BaseModel):
+    chat_id: str
+    user_id: str
+    user_name: str
+    websockets: list[WebSocket] = []
+
+    model_config = ConfigDict(arbitrary_types_allowed=True)

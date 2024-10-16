@@ -16,8 +16,6 @@ from ..chat_tools.chat_manager import chat_manager
 router = APIRouter(prefix="/chat")
 
 
-connected_users = []
-
 @router.get("/histories", response_model=ChatHistories)
 async def user_chat_histories(
     user: Annotated[UserWithId, Depends(get_user)],

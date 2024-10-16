@@ -43,3 +43,11 @@ class OpenChatInitSchema(BaseModel):
     initiator_id: str
     initiator_name: str
     initiation_date: str = ""
+
+
+class OpenChatMsgDataSchema(BaseModel):
+    type: str
+    data: dict | str | int | list
+    user_id: str
+    chat_id: str
+    user_name: str
