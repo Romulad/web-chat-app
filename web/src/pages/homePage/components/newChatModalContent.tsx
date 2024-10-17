@@ -10,7 +10,7 @@ import {
     generateUserId, 
     getUserOpenChatInfo, 
     setUserOpenChatInfo, 
-    updateUserOpenChatIds 
+    updateUseropenChatData 
 } from "../../../lib/functions";
 import { getOpenChatPath } from "../../../lib/paths";
 
@@ -60,7 +60,7 @@ export default function NewChatModalContent(
         setCreatingChat(false);
 
         if(reqState === defaultAppState.success){
-            updateUserOpenChatIds(respData?.chat_id);
+            updateUseropenChatData(respData?.chat_id);
             setChatLink(getOpenChatPath(idsData.chatId));
             toggleLinkView();
         }
