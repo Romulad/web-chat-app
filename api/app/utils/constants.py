@@ -11,7 +11,8 @@ OpenChatMsgType = namedtuple(
     "OpenChatMsgType", 
     ['open_chat_add', 'error', "added_to_open_chat", 
     "notify_new_user", "request_join", "request_join_sent", 
-    "notification", "admin_not_conneceted", "request_approved", "request_not_approved"]
+    "notification", "admin_not_conneceted", "request_approved", "request_not_approved",
+    "user_disconnect"]
 )
 open_chat_msg_type = OpenChatMsgType(
     open_chat_add="open_chat_add",
@@ -23,5 +24,6 @@ open_chat_msg_type = OpenChatMsgType(
     admin_not_conneceted="admin_not_conneceted",
     request_approved="request_approved",
     request_not_approved="request_not_approved",
-    notification='notification'
+    notification='notification',
+    user_disconnect="user_disconnect"
 )

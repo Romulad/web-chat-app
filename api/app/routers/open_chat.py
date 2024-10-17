@@ -33,4 +33,4 @@ async def open_chat_messages(websocket: WebSocket):
         while True:
             await open_chat_manager.on_new_message(websocket)
     except WebSocketDisconnect:
-        pass
+        open_chat_manager.disconnect_user(websocket)
