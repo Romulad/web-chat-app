@@ -1,5 +1,6 @@
 import { openChatUser } from "../../../lib/definitions";
 import { getUserNotAllowedIds, getChatData } from "../../../lib/functions";
+import ManageAddUserToChat from "./manageAddUserToChat";
 import ManageNewChatConection from "./manageNewChatConnection";
 import NotAllowedChatMsg from "./notAllowedChatMsg";
 
@@ -14,12 +15,16 @@ export default function OpenChatConnectionManager(
         notAllowedChatIds.includes(chatId) ? (
             <NotAllowedChatMsg 
             userId={userData.userId}/>
-        ) : chatData ? (
-            <div></div>
-        ) : (
-            <ManageNewChatConection 
-            chatId={chatId}
+        ) : 
+        
+        chatData ? (
+            <ManageAddUserToChat 
+            chatData={chatData}
             userData={userData}/>
-        )
+        ) : 
+        
+        <ManageNewChatConection 
+        chatId={chatId}
+        userData={userData}/>
     )
 }

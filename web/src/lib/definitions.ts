@@ -30,5 +30,17 @@ export type openChatData = openChatOneData[]
 export type openChatRespDataScheme = {
     msg?: string;
     chat_id: string;
-    type: string
+    type: string;
+    data?: Array<any> | string | object;
+    user_name?: string;
+    user_id?: string;
+    chat_users?: Array<connectedOpenChatUserRespData>;
+    owner_name?: string
+}
+
+export type connectedOpenChatUserRespData = {
+    user_id: string;
+    is_owner: boolean;
+    name: string;
+    created_at: string;
 }

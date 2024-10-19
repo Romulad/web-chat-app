@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState } from "react"
-import { openChatReqDataScheme, openChatRespDataScheme, openChatUser } from "../../../lib/definitions"
+
+import { connectedOpenChatUserRespData, openChatReqDataScheme, openChatRespDataScheme, openChatUser } from "../../../lib/definitions"
 import { openChatConnectionMsgType } from "../../../lib/constant"
 import { getOpenChatSocketRoute } from "../../../lib/socketRoutes"
-import { parseSocketData } from "../../../lib/functions"
+import { parseSocketData, updateUserNotAllowedChatIds, updateUseropenChatData } from "../../../lib/functions"
 import classes from "../../../lib/classes"
+import OpenChatInterface from "./openChatInterface"
 
 
 type ManageNewChatConectionProps = {
@@ -18,6 +20,7 @@ export default function ManageNewChatConection(
     const [isInAction, setIsInAction] = useState(true);
     const [socketResp, setSocketResp] = useState<openChatRespDataScheme>();
     const ws = useRef<WebSocket>();
+    const [chatUsers, setChatUsers] = useState<Array<connectedOpenChatUserRespData>>();
 
     useEffect(()=>{
         const websocket = new WebSocket(getOpenChatSocketRoute());
@@ -28,9 +31,26 @@ export default function ManageNewChatConection(
         })
 
         websocket.addEventListener('message', (ev)=>{
+            console.log("got message")
             const respData = parseSocketData(ev.data);
             setIsInAction(false);
             setSocketResp(respData);
+
+            if (
+                respData?.type === openChatConnectionMsgType.added_to_open_chat
+            ){
+                if(respData.chat_users){
+                    setChatUsers(respData.chat_users);
+                }
+            }else if (
+                respData?.type === openChatConnectionMsgType.request_approved
+            ){
+                updateUseropenChatData(chatId, false);
+            }else if (
+                respData?.type === openChatConnectionMsgType.request_not_approved
+            ){
+                updateUserNotAllowedChatIds(chatId)
+            }
         })
 
         return () => { websocket.close() }
@@ -51,6 +71,13 @@ export default function ManageNewChatConection(
     }
 
     return(
+        chatUsers ?
+        <OpenChatInterface 
+        chatId={chatId}
+        chatUsers={chatUsers}
+        ws={ws.current}
+        /> :
+
         <div className="h-screen flex items-center justify-center text-center">
             {
                 isInAction ? (
@@ -77,6 +104,31 @@ export default function ManageNewChatConection(
                     </div>
                 ) : 
                 
+                socketResp?.type === openChatConnectionMsgType.request_join_sent ? (
+                    <div>
+                        <b>{socketResp.msg}</b>
+                        <p>Waiting for an admin to accept your request...</p>
+                    </div>
+                ) :
+
+                socketResp?.type === openChatConnectionMsgType.request_approved ? (
+                    <div>
+                        <p>
+                            Your request to join {socketResp.chat_id} 
+                            have been approved by an admin
+                        </p>
+                    </div>
+                ) :
+
+                socketResp?.type === openChatConnectionMsgType.request_not_approved ? (
+                    <div>
+                        <p>
+                            Your request to join {socketResp.chat_id} 
+                            have been rejected by an admin
+                        </p>
+                    </div>
+                ) :
+
                 <></>
             }
         </div>
