@@ -34,7 +34,7 @@ class OpenChatManager:
     async def on_new_message(self, websocket: WebSocket):
         data = await websocket.receive_json()
         parsed_data = OpenChatMsgDataSchema(**data)
-
+        
         if parsed_data.type == open_chat_msg_type.open_chat_add:
             await self.manage_add_user_to_chat(parsed_data, websocket)
         elif parsed_data.type == open_chat_msg_type.request_join:
@@ -46,11 +46,11 @@ class OpenChatManager:
 
 
     async def get_chat_data_or_msg_error(self, chat_id, websocket: WebSocket):
-        if not (chat_data := self.chats.get(chat_id)):
+        if (chat_data := self.chats.get(chat_id)) == None:
             resp_data = {"msg": "Chat not found", "chat_id": chat_id, "type": open_chat_msg_type.error}
             await websocket.send_json(resp_data)
-            return
-        return chat_data
+        else:
+            return chat_data
     
 
     async def manage_add_user_to_chat(
@@ -59,7 +59,9 @@ class OpenChatManager:
             websocket: WebSocket = None,
             existing_websockets: list[WebSocket]=None
     ):
-        if not (chat_data := await self.get_chat_data_or_msg_error(data.chat_id, websocket)):
+        if (
+            chat_data := await self.get_chat_data_or_msg_error(data.chat_id, websocket)
+        ) == None:
             return
 
         user_data = None
@@ -81,7 +83,7 @@ class OpenChatManager:
             self.chats[data.chat_id] = chat_data
         else:
             new_user = OpenChatUser(
-                is_owner=False,
+                is_owner=data.is_owner,
                 name=data.user_name,
                 user_id=data.user_id,
                 websockets=[websocket] if not existing_websockets else existing_websockets,
@@ -90,21 +92,21 @@ class OpenChatManager:
             chat_data.append(new_user)
             self.chats[data.chat_id] = chat_data
         
-        data = {
+        user_list = [chat_user.model_dump(exclude={"websockets"}) for chat_user in chat_data]
+
+        add_to_chat_data = {
             "type": open_chat_msg_type.added_to_open_chat,
-            "data": {
-             "chat_id": data.chat_id,
-             "users": [chat_user.model_dump(exclude={"websockets"}) for chat_user in chat_data]
-            }
+            "chat_id": data.chat_id,
+            "chat_users": user_list
         }
         if not existing_websockets:
-            await websocket.send_json(data)
+            await websocket.send_json(add_to_chat_data)
         else:
-            await self.broadcast_msg(existing_websockets, data)
+            await self.broadcast_msg(existing_websockets, add_to_chat_data)
 
         if not user_data:
             await self.broadcast_msg_on_new_user_add(
-                data,
+                data, user_list,
                 [websocket for user_data in chat_data for websocket in user_data.websockets if user_data.user_id != data.user_id]
             )
     
@@ -113,15 +115,17 @@ class OpenChatManager:
             self,
             data: OpenChatMsgDataSchema,
             websocket: WebSocket
-    ):
-        if not (chat_data := await self.get_chat_data_or_msg_error(data.chat_id, websocket)):
+    ):        
+        if (
+            chat_data := await self.get_chat_data_or_msg_error(data.chat_id, websocket)
+        ) == None:
             return
         
         owner_sockets: list[WebSocket] = []
         for chat_user in chat_data:
             if chat_user.is_owner and chat_user.websockets:
-                for websocket in chat_user.websockets:
-                   owner_sockets.append(websocket) 
+                for owner_websocket in chat_user.websockets:
+                   owner_sockets.append(owner_websocket) 
                 break
         
         if not owner_sockets:
@@ -160,9 +164,9 @@ class OpenChatManager:
             "type": open_chat_msg_type.request_join_sent,
             "chat_id": data.chat_id,
             "msg": (
-                f"Request to join sent for ${data.chat_id}" 
+                f"Request to join sent for {data.chat_id}" 
                 if not user_request 
-                else f"Request to join sent for ${data.chat_id} again"
+                else f"Request to join sent for {data.chat_id} again"
             )
         }
         await self.broadcast_msg(owner_sockets, request_join_data)
@@ -215,7 +219,6 @@ class OpenChatManager:
         request_approved_data = {
             "type": open_chat_msg_type.request_approved,
             "chat_id": data.chat_id,
-            "owner_name": data.data.get('owner_name')
         }
         await self.broadcast_msg(user_request.websockets, request_approved_data)
         await self.add_to_chat_on_approved_request(user_request)
@@ -258,22 +261,21 @@ class OpenChatManager:
         request_not_approved_data = {
             "type": open_chat_msg_type.request_not_approved,
             "chat_id": data.chat_id,
-            "owner_name": data.data.get('owner_name')
         }
         await self.broadcast_msg(user_request.websockets, request_not_approved_data)
 
 
     async def broadcast_msg_on_new_user_add(
             self, data: OpenChatMsgDataSchema, 
+            user_list: list,
             websockets: list[WebSocket]
     ):
         broadcast_data = {
             "type": open_chat_msg_type.notify_new_user,
-            "data": {
-                "chat_id": data.chat_id,
-                "user_name": data.user_name,
-                "user_id": data.user_id,
-            }
+            "chat_id": data.chat_id,
+            "user_name": data.user_name,
+            "user_id": data.user_id,
+            "chat_users": user_list
         }
         await self.broadcast_msg(websockets, broadcast_data)
     
@@ -301,7 +303,6 @@ class OpenChatManager:
 
     async def manage_chat_disconnection(self, websocket: WebSocket):
         removed_user: list[dict] = []
-        removed_ids: list[str] = []
 
         for chat_id, chat_data in self.chats.items():
             for chat_user in chat_data:
@@ -318,23 +319,19 @@ class OpenChatManager:
                         "chat_id": chat_id}
                     )
 
-            if not chat_data:
-                del self.chats[chat_id]
-                removed_ids.append(chat_id)
-
         for user_data in removed_user:
-            if not (c_chat_id := user_data.get('chat_id')) in removed_ids:
-                data = {
-                    "chat_id": c_chat_id,
-                    "user_id": user_data.get('user_id'),
-                    "user_name": user_data.get('user_name'),
-                    "type": open_chat_msg_type.user_disconnect
-                }
-                chat_data = self.chats[c_chat_id]
-                await self.broadcast_msg(
-                    [websocket for user_data in chat_data for websocket in user_data.websockets if user_data != user_data.get('user_id')], 
-                    data
-                )
+            c_chat_id = user_data.get('chat_id')
+            data = {
+                "chat_id": c_chat_id,
+                "user_id": user_data.get('user_id'),
+                "user_name": user_data.get('user_name'),
+                "type": open_chat_msg_type.user_disconnect
+            }
+            chat_data = self.chats.get(c_chat_id, [])
+            await self.broadcast_msg(
+                [websocket for chat_user in chat_data for websocket in chat_user.websockets if chat_user.user_id != user_data.get('user_id')], 
+                data
+            )
             
         
 

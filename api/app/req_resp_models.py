@@ -51,3 +51,4 @@ class OpenChatMsgDataSchema(BaseModel):
     user_id: str
     chat_id: str
     user_name: str
+    is_owner: bool = False
