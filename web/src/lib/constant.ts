@@ -16,5 +16,6 @@ export const openChatConnectionMsgType = {
     request_approved: "request_approved",
     request_not_approved: "request_not_approved",
     notification: 'notification',
-    user_disconnect: "user_disconnect"  
+    user_disconnect: "user_disconnect" ,
+    new_message: "new_message",
 }

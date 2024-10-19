@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { parseSocketData } from "../lib/functions";
 import { openChatRespDataScheme } from "../lib/definitions";
+import { toast } from "react-toastify";
 
 
 export default function useWebSocket(
@@ -30,6 +31,7 @@ export default function useWebSocket(
 
         websocket.addEventListener('error', (_)=>{
             setIsInAction(false);
+            toast.error('An error has occured');
         })
 
         return () => { websocket.close() }

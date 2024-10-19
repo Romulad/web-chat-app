@@ -23,36 +23,29 @@ export function OneRequestDisplay(
 ){
     const [rejecting, setRejecting] = useState(false);
 
-    function onRejectBtnClick(){
-        setRejecting(true);
+    function manageRequest(requestType: string){
         const data : openChatReqDataScheme = {
             chat_id: userRequest.chat_id,
             data: "",
-            type: openChatConnectionMsgType.request_not_approved,
+            type: requestType,
             user_id: userRequest.user_id || "",
             user_name: userRequest.user_name || "",
         };
         ws?.send(JSON.stringify(data));
         const updatedData = userRequests.filter((request) => 
-            request.chat_id !== userRequest.chat_id && request.user_id !== userRequest.user_id
+            request.chat_id !== userRequest.chat_id || request.user_id !== userRequest.user_id
         );
         setUserRequests(updatedData);
+    }
+
+    function onRejectBtnClick(){
+        setRejecting(true);
+        manageRequest(openChatConnectionMsgType.request_not_approved)
         setRejecting(false);
     }
 
     function onAcceptBtnClick(){
-        const data : openChatReqDataScheme = {
-            chat_id: userRequest.chat_id,
-            data: "",
-            type: openChatConnectionMsgType.request_approved,
-            user_id: userRequest.user_id || "",
-            user_name: userRequest.user_name || "",
-        };
-        ws?.send(JSON.stringify(data));
-        const updatedData = userRequests.filter((request) => 
-            request.chat_id !== userRequest.chat_id && request.user_id !== userRequest.user_id
-        );
-        setUserRequests(updatedData);
+        manageRequest(openChatConnectionMsgType.request_approved)
     }
 
     return(
