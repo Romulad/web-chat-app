@@ -43,6 +43,8 @@ class OpenChatManager:
             await self.manage_approved_user_request(parsed_data, websocket)
         elif parsed_data.type == open_chat_msg_type.request_not_approved:
             await self.manage_not_approved_user_request(parsed_data, websocket)
+        elif parsed_data.type == open_chat_msg_type.new_message:
+            await self.manage_incomming_msg(parsed_data, websocket)
 
 
     async def get_chat_data_or_msg_error(self, chat_id, websocket: WebSocket):
@@ -279,7 +281,30 @@ class OpenChatManager:
         }
         await self.broadcast_msg(websockets, broadcast_data)
     
-    
+
+    async def manage_incomming_msg(
+        self,
+        data: OpenChatMsgDataSchema,
+        websocket: WebSocket
+    ):
+        if (
+            chat_data := await self.get_chat_data_or_msg_error(data.chat_id, websocket)
+        ) == None:
+            return
+        
+        resp_data = OpenChatMsgDataSchema(
+            chat_id=data.chat_id,
+            data=data.data,
+            type=open_chat_msg_type.new_message,
+            user_id=data.user_id,
+            user_name=data.user_name
+        ) 
+        await self.broadcast_msg(
+            [websocket for chat_user in chat_data for websocket in chat_user.websockets if chat_user.user_id != data.user_id],
+            resp_data.model_dump(),
+        )
+
+
     async def broadcast_msg(
         self, websockets: list[WebSocket], data: dict
     ):

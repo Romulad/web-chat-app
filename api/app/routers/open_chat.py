@@ -34,5 +34,3 @@ async def open_chat_messages(websocket: WebSocket):
             await open_chat_manager.on_new_message(websocket)
     except WebSocketDisconnect:
         await open_chat_manager.disconnect_user(websocket)
-        print("user request:", open_chat_manager.user_requests)
-        print("chats:", open_chat_manager.chats, )
