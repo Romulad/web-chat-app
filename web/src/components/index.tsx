@@ -5,6 +5,7 @@ import Button from "./button/index.tsx";
 import LocalMsgDisplay from "./localMsgDisplay/index.tsx";
 import RemoteMsgDisplay from "./remoteMsgDisplay/index.tsx";
 
+export * from "./icons"
 export {
     LabelInput,
     Overlay,

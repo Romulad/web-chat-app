@@ -1,13 +1,16 @@
 import React, { useEffect, useRef, useState } from "react";
 import classes from "../../../lib/classes";
 import { connectedOpenChatUserRespData, OpenChatMsg, openChatReqDataScheme, openChatRespDataScheme } from "../../../lib/definitions";
-import { getUserOpenChatInfo, parseSocketData } from "../../../lib/functions";
+import { deleteUserOpenChat, getUserOpenChatInfo, parseSocketData } from "../../../lib/functions";
 import { toast } from "react-toastify";
 
 import ConnectedUserModal from "./connectedUserModal";
-import { openChatConnectionMsgType } from "../../../lib/constant";
+import { defaultAppState, openChatConnectionMsgType } from "../../../lib/constant";
 import UserRequestsModal from "./userRequestsModal";
-import { LocalMsgDisplay, RemoteMsgDisplay } from "../../../components";
+import { Button, CenteredModalContainer, LocalMsgDisplay, RemoteMsgDisplay, TrashIcon } from "../../../components";
+import { deleteOpenChat } from "../../../api/actions/chat_actions";
+import { useNavigate } from "react-router-dom";
+import { openChatHomePath } from "../../../lib/paths";
 
 
 
@@ -22,13 +25,16 @@ export default function OpenChatInterface(
         chatId: string,
     }
 ){
+    const navigate = useNavigate();
     const [showUserListModal, setShowUserListModal] = useState(false);
     const [showUserRequestsModal, setShowUserRequestsModal] = useState(false);
+    const [showDeleteChatModal, setShowDeleteChatModal] = useState(false);
     const [userRequests, setUserRequests] = useState<Array<openChatRespDataScheme>>([]);
     const userData = getUserOpenChatInfo();
     const [innerChatUsers, setInnerChatUser] = useState<Array<connectedOpenChatUserRespData>>(chatUsers);
     const [openChatMsgs, setOpenChatMsgs] = useState<Array<OpenChatMsg>>([]);
     const [msg, setMsg] = useState('');
+    const [deletingChat, setDeletingChat] = useState(false);
     const msgContainerRef = useRef<HTMLDivElement>(null);
 
     useEffect(()=>{
@@ -61,6 +67,13 @@ export default function OpenChatInterface(
                 }
                 setOpenChatMsgs((msgs)=> [...msgs, msgData]);
                 showContainerLastMsg()
+            }else if(
+                data?.type === openChatConnectionMsgType.chat_deleted
+            ){
+                toast.info(`Chat have been deleted by ${data.owner_name}`);
+                setTimeout(() => {
+                    performAfterChatDeletion()
+                }, 1000);
             }
         })
 
@@ -75,9 +88,18 @@ export default function OpenChatInterface(
         setShowUserRequestsModal(!showUserRequestsModal);
     }
 
+    function toggleDeleteChatModal(){
+        setShowDeleteChatModal(!showDeleteChatModal);
+    }
+
     function isAdmin(userId: string){
         const chatUser = innerChatUsers.find((chatUser)=> chatUser.user_id === userId);
         return chatUser?.is_owner
+    }
+
+    function performAfterChatDeletion(){
+        deleteUserOpenChat(chatId);
+        navigate(openChatHomePath);
     }
 
     function sendMsg(){
@@ -115,6 +137,19 @@ export default function OpenChatInterface(
         showContainerLastMsg()
     }
 
+    function deleteChat(){
+        setDeletingChat(true);
+        deleteOpenChat(chatId)
+        .then((resp)=>{
+            setDeletingChat(false);
+            const {reqState} = resp;
+            if(reqState === defaultAppState.success){
+                toast.success('Chat deleted Successfully');
+                performAfterChatDeletion()
+            }
+        })
+    }
+
     return(
         <>
         <div className="max-w-[900px] min-[910px]:mx-auto mx-3 pt-5 flex flex-col gap-5 h-screen">
@@ -129,13 +164,20 @@ export default function OpenChatInterface(
                     </p>
                 </button>
 
-                {isAdmin(userData?.userId || "") && 
-                <button className="relative"
-                onClick={toggleUserRequestModal}>
-                    <div className={`border-2 px-2 py-1 rounded-full ${userRequests.length ? "border-red-500" : ""}`}>
-                        {userRequests.length}
-                    </div>
-                </button>}
+                {isAdmin(userData?.userId || "") &&
+                <div className="flex items-center gap-3">
+                    <button onClick={toggleDeleteChatModal}>
+                        <TrashIcon 
+                        className="size-6 text-red-500"/>
+                    </button>
+
+                    <button className="relative"
+                    onClick={toggleUserRequestModal}>
+                        <div className={`border-2 px-2 py-1 rounded-full ${userRequests.length ? "border-red-500" : ""}`}>
+                            {userRequests.length}
+                        </div>
+                    </button>
+                </div>}
             </div>
 
             <div className="grow flex flex-col justify-between overflow-auto gap-3 pb-4 px-3">
@@ -172,12 +214,36 @@ export default function OpenChatInterface(
         showUserListModal={showUserListModal}
         toggleUserListModal={toggleUserListModal}/>
 
-        <UserRequestsModal 
+        <UserRequestsModal
         showUserRequestsModal={showUserRequestsModal}
         toggleUserRequestsModal={toggleUserRequestModal}
         userRequests={userRequests}
         ws={ws}
         setUserRequests={setUserRequests}/>
+
+        <CenteredModalContainer
+        closeModal={toggleDeleteChatModal}
+        showModal={showDeleteChatModal}>
+            <div className="bg-white rounded-lg p-4">
+                <h1 className="text-lg mb-5 font-bold ">Delete Chat</h1>
+                <p className="text-center">
+                    Are you sure you want to delete the chat?
+                </p>
+
+                <div className="flex justify-between mt-5">
+                    <button className={classes.btn.outlined}
+                    onClick={toggleDeleteChatModal}>
+                        Cancel
+                    </button>
+                    <Button 
+                    className={classes.btn.red}
+                    defaultText="Yes, delete"
+                    isInAction={deletingChat}
+                    isInActionText="Deleting"
+                    onClick={deleteChat}/>
+                </div>
+            </div>
+        </CenteredModalContainer>
         </>
     )
 }

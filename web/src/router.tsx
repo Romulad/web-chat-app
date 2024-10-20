@@ -9,8 +9,10 @@ import {
 import { 
   createAccountPath, 
   homePath,
+  openChatHomePath,
   openChatPath
 } from "./lib/paths";
+import OpenChatPage from "./pages/openChatPage";
 
 
 const router = createBrowserRouter([
@@ -27,6 +29,11 @@ const router = createBrowserRouter([
   {
     path: openChatPath,
     element: <OpenChatChatPage />,
+    errorElement: <ErrorPage />,
+  },
+  {
+    path: openChatHomePath,
+    element: <OpenChatPage />,
     errorElement: <ErrorPage />,
   },
 ]);

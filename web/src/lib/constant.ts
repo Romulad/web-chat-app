@@ -18,4 +18,5 @@ export const openChatConnectionMsgType = {
     notification: 'notification',
     user_disconnect: "user_disconnect" ,
     new_message: "new_message",
+    chat_deleted: "chat_deleted",
 }

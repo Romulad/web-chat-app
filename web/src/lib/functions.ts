@@ -23,6 +23,14 @@ export function getChatData(chatId: string) : openChatOneData | undefined {
     }
     return data;
 }
+export function deleteUserOpenChat(chatId: string) {
+    const openChatData: openChatData = JSON.parse(
+        localStorage.getItem('openChat') || "[]"
+    );
+    const updatedData = openChatData.filter((data) => data.chatId !== chatId);
+    localStorage.setItem('openChat', JSON.stringify(updatedData));
+}
+
 
 export function updateUserNotAllowedChatIds(chatId: string){
     const notAllowedChatIds: Array<string> = JSON.parse(
@@ -45,6 +53,7 @@ export function getUserOpenChatInfo(): openChatUser | null {
     const data = JSON.parse(localStorage.getItem('openChatUser') || '{}');
     return Object.keys(data).length ? data : null;
 }
+
 
 export const generateRandomCharac = (len=6) => {
     let chara = "";
