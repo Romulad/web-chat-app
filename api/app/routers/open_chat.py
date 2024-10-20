@@ -22,7 +22,7 @@ async def create_new_open_chat(
 async def delete_open_chat(
     chat_id
 ):
-    open_chat_manager.delete_chat(chat_id)
+    await open_chat_manager.delete_chat(chat_id)
     return ""
 
 

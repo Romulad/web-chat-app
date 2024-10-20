@@ -21,8 +21,9 @@ class OpenChatManager:
         self.chats[chat_data.chat_id] = [user_data]
 
 
-    def delete_chat(self, chat_id:str):
+    async def delete_chat(self, chat_id:str):
         if self.chats.get(chat_id):
+            await self.notify_chat_deletion(chat_id)
             del self.chats[chat_id]
         else:
             raise HTTPException(
@@ -302,6 +303,19 @@ class OpenChatManager:
         await self.broadcast_msg(
             [websocket for chat_user in chat_data for websocket in chat_user.websockets if chat_user.user_id != data.user_id],
             resp_data.model_dump(),
+        )
+    
+
+    async def notify_chat_deletion(self, chat_id):
+        chat_data = self.chats.get(chat_id, [])
+
+        resp_data = {
+            "chat_id": chat_id,
+            "type": open_chat_msg_type.chat_deleted
+        }
+        await self.broadcast_msg(
+            [websocket for chat_user in chat_data for websocket in chat_user.websockets],
+            resp_data
         )
 
 
