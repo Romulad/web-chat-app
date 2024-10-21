@@ -7,12 +7,15 @@ import {
   OpenChatChatPage
 } from "./pages";
 import { 
+  chatInterfacePath,
   createAccountPath, 
   homePath,
   openChatHomePath,
   openChatPath
 } from "./lib/paths";
 import OpenChatPage from "./pages/openChatPage";
+import ProtectedRoute from "./protectRoutes";
+import ChatInterface from "./pages/chatInterface";
 
 
 const router = createBrowserRouter([
@@ -34,6 +37,11 @@ const router = createBrowserRouter([
   {
     path: openChatHomePath,
     element: <OpenChatPage />,
+    errorElement: <ErrorPage />,
+  },
+  {
+    path: chatInterfacePath,
+    element: <ProtectedRoute children={<ChatInterface />} />,
     errorElement: <ErrorPage />,
   },
 ]);

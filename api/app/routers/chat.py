@@ -7,7 +7,7 @@ from bson import ObjectId
 
 from ..dependencies import get_user, get_socket_user
 from ..schemas import UserWithId, ChatMetaData, ChatMessage
-from ..req_resp_models import ChatHistories, ChatMessages
+from ..req_resp_models import ChatHistories, ChatMessages, UserList
 from ..utils.db import get_db_from_request
 from ..database import db_collection_names
 from ..chat_tools.chat_manager import chat_manager
@@ -106,3 +106,19 @@ async def get_chat_messages(
 
     return {"data": messages}
 
+
+@router.get("/find", response_model=UserList)
+async def find_users(
+    user: Annotated[UserWithId, Depends(get_user)],
+    request: Request,
+    q: str
+):
+    db = get_db_from_request(request)
+    collection = db.get_collection(db_collection_names.users)
+    
+    data = await collection.find({'$or': [
+        {"email": q},
+        {"first_name": q},
+        {"last_name": q},
+    ]}).to_list(100)
+    return { "data": data }

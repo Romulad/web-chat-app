@@ -100,7 +100,8 @@ class OpenChatManager:
         add_to_chat_data = {
             "type": open_chat_msg_type.added_to_open_chat,
             "chat_id": data.chat_id,
-            "chat_users": user_list
+            "chat_users": user_list,
+            "chat_msgs": data.data,
         }
         if not existing_websockets:
             await websocket.send_json(add_to_chat_data)
@@ -224,14 +225,14 @@ class OpenChatManager:
             "chat_id": data.chat_id,
         }
         await self.broadcast_msg(user_request.websockets, request_approved_data)
-        await self.add_to_chat_on_approved_request(user_request)
+        await self.add_to_chat_on_approved_request(user_request, data.data)
 
 
-    async def add_to_chat_on_approved_request(self, user_request: OpenChatRequestJoin):
+    async def add_to_chat_on_approved_request(self, user_request: OpenChatRequestJoin, chat_msgs):
         new_data = OpenChatMsgDataSchema(
             user_name=user_request.user_name,
             chat_id=user_request.chat_id,
-            data="",
+            data=chat_msgs,
             type="",
             user_id=user_request.user_id
         )

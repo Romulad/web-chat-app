@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react"
 
-import { connectedOpenChatUserRespData, openChatReqDataScheme, openChatRespDataScheme, openChatUser } from "../../../lib/definitions"
+import { connectedOpenChatUserRespData, OpenChatMsg, openChatReqDataScheme, openChatRespDataScheme, openChatUser } from "../../../lib/definitions"
 import { openChatConnectionMsgType } from "../../../lib/constant"
 import { getOpenChatSocketRoute } from "../../../lib/socketRoutes"
 import { parseSocketData, updateUserNotAllowedChatIds, updateUseropenChatData } from "../../../lib/functions"
@@ -21,6 +21,7 @@ export default function ManageNewChatConection(
     const [socketResp, setSocketResp] = useState<openChatRespDataScheme>();
     const ws = useRef<WebSocket>();
     const [chatUsers, setChatUsers] = useState<Array<connectedOpenChatUserRespData>>();
+    const [chatMsgs, setChatMsgs] = useState<OpenChatMsg[]>([]);
 
     useEffect(()=>{
         const websocket = new WebSocket(getOpenChatSocketRoute());
@@ -41,6 +42,7 @@ export default function ManageNewChatConection(
             ){
                 if(respData.chat_users){
                     setChatUsers(respData.chat_users);
+                    respData.chat_msgs && setChatMsgs(respData.chat_msgs);
                 }
             }else if (
                 respData?.type === openChatConnectionMsgType.request_approved
@@ -76,7 +78,7 @@ export default function ManageNewChatConection(
         chatId={chatId}
         chatUsers={chatUsers}
         ws={ws.current}
-        /> :
+        msgs={chatMsgs}/> :
 
         <div className="h-screen flex items-center justify-center text-center">
             {

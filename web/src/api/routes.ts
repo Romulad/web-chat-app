@@ -10,3 +10,15 @@ export const getCreateOpenChatRoute = () =>{
 export const getDeleteOpenChatRoute = (chatId: string) => {
     return `open-chat/${chatId}`
 }
+
+export const getAboutUserDataRoute = () => {
+    return "auth/me"
+}
+
+export const getUserChatHistoriesRoute = () => {
+    return "chat/histories"
+}
+
+export const getFindUserRoute = () => {
+    return 'chat/find'
+}

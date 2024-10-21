@@ -2,11 +2,12 @@
 
 type LocalMsgDisplayProps = {
     msg: string;
-    name?: string
+    name?: string;
+    showIcon?: boolean
 }
 
 export default function LocalMsgDisplay(
-    {name, msg} : LocalMsgDisplayProps
+    {name, msg, showIcon} : LocalMsgDisplayProps
 ){
     return(
         <div className="ms-auto max-w-96 flex items-start gap-2">
@@ -21,7 +22,7 @@ export default function LocalMsgDisplay(
                 </p>
             </div>
             
-            {name && 
+            {name && showIcon &&
             <div className="border-2 px-4 py-2 rounded-full">
                 {name?.charAt(0).toUpperCase()}
             </div>}

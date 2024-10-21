@@ -1,9 +1,9 @@
 import React, { useEffect, useRef, useState } from "react";
-import classes from "../../../lib/classes";
-import { connectedOpenChatUserRespData, OpenChatMsg, openChatReqDataScheme, openChatRespDataScheme } from "../../../lib/definitions";
-import { deleteUserOpenChat, getUserOpenChatInfo, parseSocketData } from "../../../lib/functions";
 import { toast } from "react-toastify";
 
+import classes from "../../../lib/classes";
+import { connectedOpenChatUserRespData, OpenChatMsg, openChatReqDataScheme, openChatRespDataScheme } from "../../../lib/definitions";
+import { deleteUserOpenChat, getChatData, getOpenChatMsgs, getUserOpenChatInfo, parseSocketData, setLsOpenChatMsgs } from "../../../lib/functions";
 import ConnectedUserModal from "./connectedUserModal";
 import { defaultAppState, openChatConnectionMsgType } from "../../../lib/constant";
 import UserRequestsModal from "./userRequestsModal";
@@ -18,13 +18,16 @@ export default function OpenChatInterface(
     {
         chatUsers, 
         ws,
-        chatId
+        chatId,
+        msgs
     } : {
         chatUsers: Array<connectedOpenChatUserRespData>,
         ws: WebSocket | undefined,
         chatId: string,
+        msgs?: OpenChatMsg[]
     }
 ){
+    const isChatOwner = getChatData(chatId)?.isOwner;
     const navigate = useNavigate();
     const [showUserListModal, setShowUserListModal] = useState(false);
     const [showUserRequestsModal, setShowUserRequestsModal] = useState(false);
@@ -32,10 +35,15 @@ export default function OpenChatInterface(
     const [userRequests, setUserRequests] = useState<Array<openChatRespDataScheme>>([]);
     const userData = getUserOpenChatInfo();
     const [innerChatUsers, setInnerChatUser] = useState<Array<connectedOpenChatUserRespData>>(chatUsers);
-    const [openChatMsgs, setOpenChatMsgs] = useState<Array<OpenChatMsg>>([]);
+    const [openChatMsgs, setOpenChatMsgs] = useState<Array<OpenChatMsg>>(
+        isChatOwner ? getOpenChatMsgs(chatId) : msgs && msgs.length ? msgs : []
+    );
     const [msg, setMsg] = useState('');
     const [deletingChat, setDeletingChat] = useState(false);
     const msgContainerRef = useRef<HTMLDivElement>(null);
+    const openChatMsgsRef = useRef<OpenChatMsg[]>(
+        isChatOwner ? getOpenChatMsgs(chatId) : []
+    );
 
     useEffect(()=>{
         ws?.addEventListener('message', (ev)=>{
@@ -45,19 +53,25 @@ export default function OpenChatInterface(
             ){
                 setUserRequests((userRequests)=> [...userRequests, data]);
                 toast.info(`${data.user_name} is asking to join the chat`);
-            }else if(
+            }
+            
+            else if(
                 data?.type === openChatConnectionMsgType.notify_new_user
             ){
                 if(data.chat_users){
                     toast.info(`${data.user_name} join the chat`);
                     setInnerChatUser(data.chat_users);
                 }
-            }else if(
+            }
+            
+            else if(
                 data?.type === openChatConnectionMsgType.user_disconnect
             ){
                 toast.info(`${data.user_name} leave the chat`);
                 setInnerChatUser(innerChatUsers.filter((user)=> user.user_id !== data.user_id));
-            }else if(
+            }
+            
+            else if(
                 data?.type === openChatConnectionMsgType.new_message
             ){
                 const msgData : OpenChatMsg = {
@@ -66,11 +80,18 @@ export default function OpenChatInterface(
                     userId: data.user_id || "",
                 }
                 setOpenChatMsgs((msgs)=> [...msgs, msgData]);
-                showContainerLastMsg()
-            }else if(
+                showContainerLastMsg();
+
+                if(isChatOwner){
+                    setLsOpenChatMsgs(chatId, [...openChatMsgsRef.current, msgData]);
+                }
+                openChatMsgsRef.current = [...openChatMsgsRef.current, msgData];
+            }
+            
+            else if(
                 data?.type === openChatConnectionMsgType.chat_deleted
             ){
-                toast.info(`Chat have been deleted by ${data.owner_name}`);
+                toast.info(`Chat have been deleted`);
                 setTimeout(() => {
                     performAfterChatDeletion()
                 }, 1000);
@@ -117,7 +138,12 @@ export default function OpenChatInterface(
             text: msg,
             userId: userData?.userId || ""
         }
-        setOpenChatMsgs([...openChatMsgs, newMsg])
+        setOpenChatMsgs([...openChatMsgs, newMsg]);
+
+        if(isChatOwner){
+            setLsOpenChatMsgs(chatId, [...openChatMsgsRef.current, newMsg]);
+        }
+        openChatMsgsRef.current = [...openChatMsgsRef.current, newMsg];
     }
 
     function showContainerLastMsg(){
@@ -191,7 +217,8 @@ export default function OpenChatInterface(
                         ) : (
                             <RemoteMsgDisplay 
                             msg={openChatMsg.text}
-                            name={openChatMsg.name}/> 
+                            name={openChatMsg.name}
+                            /> 
                         )
                     })}
                 </div>

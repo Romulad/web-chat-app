@@ -1,4 +1,4 @@
-import { openChatData, openChatOneData, openChatRespDataScheme, openChatUser } from "./definitions";
+import { openChatData, OpenChatMsg, openChatOneData, openChatRespDataScheme, openChatUser } from "./definitions";
 
 const alpha = "abcdefghijklmnopqrstuvwxyz";
 
@@ -52,6 +52,21 @@ export function setUserOpenChatInfo(data: openChatUser){
 export function getUserOpenChatInfo(): openChatUser | null {
     const data = JSON.parse(localStorage.getItem('openChatUser') || '{}');
     return Object.keys(data).length ? data : null;
+}
+
+
+export function setLsOpenChatMsgs(chatId: string, msgs: OpenChatMsg[]){
+    const chatMsgs = JSON.parse(
+        localStorage.getItem('openChatMsgs') || "{}"
+    );
+
+    chatMsgs[chatId] = msgs;
+    localStorage.setItem('openChatMsgs', JSON.stringify(chatMsgs));
+}
+export function getOpenChatMsgs(chatId: string):  OpenChatMsg[] | [] {
+    const chatMsgs = JSON.parse(localStorage.getItem('openChatMsgs') || "{}");  
+    const chatMsg = chatMsgs && chatMsgs[chatId]; 
+    return chatMsg?.length ? chatMsg : [];
 }
 
 

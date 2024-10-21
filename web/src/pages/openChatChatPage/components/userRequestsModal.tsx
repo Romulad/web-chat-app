@@ -3,7 +3,7 @@ import { Button, CenteredModalContainer } from "../../../components";
 import classes from "../../../lib/classes";
 import { openChatConnectionMsgType } from "../../../lib/constant";
 import {  openChatReqDataScheme, openChatRespDataScheme } from "../../../lib/definitions";
-import { parseSocketData } from "../../../lib/functions";
+import { getOpenChatMsgs, parseSocketData } from "../../../lib/functions";
 import { toast } from "react-toastify";
 
 
@@ -26,7 +26,7 @@ export function OneRequestDisplay(
     function manageRequest(requestType: string){
         const data : openChatReqDataScheme = {
             chat_id: userRequest.chat_id,
-            data: "",
+            data: getOpenChatMsgs(userRequest.chat_id),
             type: requestType,
             user_id: userRequest.user_id || "",
             user_name: userRequest.user_name || "",

@@ -35,7 +35,8 @@ export type openChatRespDataScheme = {
     user_name?: string;
     user_id?: string;
     chat_users?: Array<connectedOpenChatUserRespData>;
-    owner_name?: string
+    owner_name?: string,
+    chat_msgs?: OpenChatMsg[]
 }
 
 export type connectedOpenChatUserRespData = {
@@ -50,3 +51,27 @@ export type OpenChatMsg = {
     name: string,
     userId: string
 }
+
+export type UserTokenResp = {
+    access_token: string,
+    token_type: string
+}
+
+export type UserDataResp = {
+    id: string,
+    email: string,
+    first_name: string,
+    last_name: string,
+    created_at: string,
+}
+
+export type UserChatHistoryResp = {
+    chat_id: string;
+    unread_count: number;
+    unread_user_id: string;
+    last_message: string;
+    friend: UserDataResp;
+    last_updated: string;
+}[]
+
+export type UserListResp = UserDataResp[]

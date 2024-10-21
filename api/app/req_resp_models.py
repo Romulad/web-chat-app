@@ -36,6 +36,10 @@ class ChatResponse(BaseModel):
     chat_id: str
     msg: str
     sender_id: str
+
+
+class UserList(BaseModel):
+    data: list[UserWithId]
     
 
 class OpenChatInitSchema(BaseModel):

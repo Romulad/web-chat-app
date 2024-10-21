@@ -3,14 +3,15 @@
 type RemoteMsgDisplayProps = {
     msg: string;
     name?: string;
+    showIcon?: boolean
 }
 
 export default function RemoteMsgDisplay(
-    {name, msg}: RemoteMsgDisplayProps
+    {name, msg, showIcon}: RemoteMsgDisplayProps
 ){
     return(
         <div className="me-auto max-w-96 flex items-start gap-2">
-            {name &&
+            {name && showIcon &&
             <div className="border-2 px-4 py-2 rounded-full">
                 {name.charAt(0).toUpperCase()}
             </div>}

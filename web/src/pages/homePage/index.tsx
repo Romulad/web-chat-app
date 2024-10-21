@@ -1,7 +1,5 @@
-import { Link } from "react-router-dom";
 import { useState } from "react";
 
-import { createAccountPath } from "../../lib/paths";
 import { Overlay } from "../../components";
 import classes from "../../lib/classes";
 import NewChatModalContent from "./components/newChatModalContent";
@@ -22,11 +20,6 @@ export default function HomePage(){
                 className={classes.btn.green} onClick={toggleNewChatModal}>
                     Start a new chat
                 </button>
-
-                <Link to={createAccountPath}
-                className={classes.btn.blue}>
-                    Create a new account
-                </Link>
             </div>
         </div>
 

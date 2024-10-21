@@ -1,7 +1,7 @@
 import { defaultAppState } from "../../lib/constant";
-import { createOpenChatResp } from "../../lib/definitions";
+import { createOpenChatResp, UserListResp } from "../../lib/definitions";
 import { request } from "../request";
-import { getCreateOpenChatRoute, getDeleteOpenChatRoute } from "../routes";
+import { getCreateOpenChatRoute, getDeleteOpenChatRoute, getFindUserRoute } from "../routes";
 
 
 export const createNewOpenChat = async (
@@ -32,5 +32,15 @@ export const deleteOpenChat = async (
     }catch(error:any){
         console.log(error?.response?.data || error?.request || error?.message)
         return {reqState: defaultAppState.error, respData: null}
+    }
+}
+
+export const searchUsers = async (query: string) : Promise<{reqState: string, respData: UserListResp | any}> => {
+    try{
+        const resp = await request.get(getFindUserRoute(), {params: {q: query}});
+        return {reqState: defaultAppState.success, respData: resp.data}
+    }catch(error:any){
+        console.log(error?.response?.data || error?.request || error?.message)
+        return {reqState: defaultAppState.error, respData: error?.response?.data}
     }
 }

@@ -52,7 +52,7 @@ export default function ManageAddUserToChat(
         <OpenChatInterface 
         chatUsers={chatUsers}
         chatId={chatData.chatId}
-        ws={ws}/> :
+        ws={ws} /> :
         
         <div className="h-screen flex items-center justify-center text-center">
             {
