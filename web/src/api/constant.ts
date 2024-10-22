@@ -1,1 +1,1 @@
-export const BASE_ROUTE = "http://127.0.0.1:8000/";
+export const BASE_ROUTE = location.href.includes('localhost') ? "http://127.0.0.1:8000/" : "https://l5m490xg-8000.euw.devtunnels.ms/";
