@@ -3,7 +3,6 @@ import { Button, CenteredModalContainer } from "../../../components";
 import classes from "../../../lib/classes";
 import { searchUsers } from "../../../api/actions/chat_actions";
 import { defaultAppState } from "../../../lib/constant";
-import { UserListResp } from "../../../lib/definitions";
 
 
 interface FindInviteNewUserModalProps {
@@ -16,7 +15,6 @@ export default function FindInviteNewUserModal(
 ){
     const [value, setValue] = useState('');
     const [searching, setSearching] = useState(false);
-    const [searchResult, setSearchResult] = useState<UserListResp>()
 
     function onSearchBtnClick(){
         if(!value){
@@ -29,7 +27,6 @@ export default function FindInviteNewUserModal(
             setSearching(false);
             if(resp.reqState === defaultAppState.success){
                 console.log(resp.respData);
-                setSearchResult(resp.respData)
             }
         })
     }

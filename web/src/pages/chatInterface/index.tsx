@@ -1,18 +1,16 @@
-import { useEffect, useState } from "react"
-import { UserDataResp } from "../../lib/definitions"
+import { useEffect } from "react"
 import { fetchAboutUserData } from "../../api/actions/auth";
 import { defaultAppState } from "../../lib/constant";
 import ChatSideBar from "./components/chatSideBar";
 
 
 export default function ChatInterface(){
-    const [userData, setUserData] = useState<UserDataResp>();
     
     useEffect(()=>{
         fetchAboutUserData()
         .then((resp)=>{
             if(resp.reqState === defaultAppState.success){
-                setUserData(resp.respData);
+
             }
         });
 
