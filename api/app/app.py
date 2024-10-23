@@ -15,7 +15,6 @@ app.include_router(open_chat_router)
 origins = [
     "http://localhost:5173",
     "http://localhost:4173",
-    "https://chat-ro.onrender.com"
 ]
 
 app.add_middleware(
