@@ -1,1 +1,1 @@
-export const BASE_ROUTE = location.href.includes('localhost') ? "http://127.0.0.1:8000/" : "https://l5m490xg-8000.euw.devtunnels.ms/";
+export const BASE_ROUTE = location.href.includes('localhost') ? "http://127.0.0.1:8000/" : "https://web-chat-app-0r03.onrender.com/";
