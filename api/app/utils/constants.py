@@ -1,12 +1,5 @@
 from collections import namedtuple
 
-SocketMsgType = namedtuple("SocketMsgType", ['msg', 'init', 'open_chat_add'])
-socket_msg_type = SocketMsgType(
-    msg='msg',
-    init='init',
-    open_chat_add="open_chat_add"
-)
-
 OpenChatMsgType = namedtuple(
     "OpenChatMsgType", 
     ['open_chat_add', 'error', "added_to_open_chat", 
