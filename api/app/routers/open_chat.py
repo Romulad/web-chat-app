@@ -26,11 +26,13 @@ async def delete_open_chat(
     return ""
 
 
-@router.websocket("/ws")
-async def open_chat_messages(websocket: WebSocket):
+@router.websocket("/ws/{chat_id}/{user_id}")
+async def open_chat_messages(
+    websocket: WebSocket, chat_id: str, user_id: str
+):
     await websocket.accept()
     try:
         while True:
             await open_chat_manager.on_new_message(websocket)
     except WebSocketDisconnect:
-        await open_chat_manager.disconnect_user(websocket)
+        await open_chat_manager.disconnect_user(websocket, chat_id, user_id)

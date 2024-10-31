@@ -5,13 +5,21 @@ from fastapi import HTTPException, status, WebSocket
 from ..req_resp_models import OpenChatInitSchema, OpenChatMsgDataSchema
 from ..utils.constants import open_chat_msg_type
 from ..schemas import OpenChatUser, OpenChatRequestJoin
+from .open_chat_utils import OpenChatUtils
 
 
-class OpenChatManager:
+class OpenChatManager(OpenChatUtils):
     chats : dict[str, list[OpenChatUser]] = {}
     user_requests: list[OpenChatRequestJoin] = []
+    chat_owners_ref : dict[str, OpenChatUser] = {}
+
 
     def create_new_chat(self, chat_data:OpenChatInitSchema):
+        if self.chats.get(chat_data.chat_id):
+            raise HTTPException(
+                status.HTTP_409_CONFLICT, "Chat id already exists"
+            )
+
         user_data = OpenChatUser(
             created_at=datetime.datetime.now(datetime.timezone.utc).isoformat(),
             is_owner=True,
@@ -19,12 +27,13 @@ class OpenChatManager:
             user_id=chat_data.initiator_id
         )
         self.chats[chat_data.chat_id] = [user_data]
+        self.chat_owners_ref[chat_data.chat_id] = user_data
 
 
     async def delete_chat(self, chat_id:str):
-        if self.chats.get(chat_id):
-            await self.notify_chat_deletion(chat_id)
+        if (chat_data := self.chats.get(chat_id)):
             del self.chats[chat_id]
+            await self.notify_chat_deletion(chat_id, chat_data)
         else:
             raise HTTPException(
                 status.HTTP_404_NOT_FOUND,
@@ -46,14 +55,6 @@ class OpenChatManager:
             await self.manage_not_approved_user_request(parsed_data, websocket)
         elif parsed_data.type == open_chat_msg_type.new_message:
             await self.manage_incomming_msg(parsed_data, websocket)
-
-
-    async def get_chat_data_or_msg_error(self, chat_id, websocket: WebSocket):
-        if (chat_data := self.chats.get(chat_id)) == None:
-            resp_data = {"msg": "Chat not found", "chat_id": chat_id, "type": open_chat_msg_type.error}
-            await websocket.send_json(resp_data)
-        else:
-            return chat_data
     
 
     async def manage_add_user_to_chat(
@@ -63,44 +64,43 @@ class OpenChatManager:
             existing_websockets: list[WebSocket]=None
     ):
         if (
-            chat_data := await self.get_chat_data_or_msg_error(data.chat_id, websocket)
+            chat_data := await self.get_chat_data_or_msg_error(data.chat_id, self.chats, websocket)
         ) == None:
             return
 
-        user_data = None
-        for existing_user in chat_data:
-            if existing_user.user_id == data.user_id:
-                user_data = existing_user
-        
-        if user_data:
-            chat_data.remove(user_data)
-            websockets = user_data.websockets
-
-            if not existing_websockets:
-                websockets.append(websocket)
-            else:
-                websockets.extend(existing_websockets)
-
-            user_data.websockets = websockets
-            chat_data.append(user_data)
-            self.chats[data.chat_id] = chat_data
-        else:
-            new_user = OpenChatUser(
-                is_owner=data.is_owner,
-                name=data.user_name,
-                user_id=data.user_id,
-                websockets=[websocket] if not existing_websockets else existing_websockets,
-                created_at=datetime.datetime.now(datetime.timezone.utc).isoformat()
+        if(
+            user_data := await self.get_user_data_or_msg_error(
+                chat_data, data.user_id, websocket
             )
-            chat_data.append(new_user)
-            self.chats[data.chat_id] = chat_data
+        ) == None:
+            return
         
-        user_list = [chat_user.model_dump(exclude={"websockets"}) for chat_user in chat_data]
+        chat_data.remove(user_data)
+        old_websockets = user_data.websockets
+        is_already_in_chat = len(user_data.websockets) > 0
+
+        if not existing_websockets:
+            old_websockets.append(websocket)
+        else:
+            old_websockets.extend(existing_websockets)
+
+        user_data.websockets = old_websockets
+        chat_data.append(user_data)
+        self.chats[data.chat_id] = chat_data
+        
+        user_list = [
+            chat_user.model_dump(exclude={"websockets"}) for chat_user in chat_data
+        ]
+        connected_user_list = [
+            chat_user.model_dump(exclude={"websockets"}) 
+            for chat_user in chat_data if chat_user.websockets
+        ]
 
         add_to_chat_data = {
             "type": open_chat_msg_type.added_to_open_chat,
             "chat_id": data.chat_id,
             "chat_users": user_list,
+            "connected_users": connected_user_list,
             "chat_msgs": data.data,
         }
         if not existing_websockets:
@@ -108,9 +108,9 @@ class OpenChatManager:
         else:
             await self.broadcast_msg(existing_websockets, add_to_chat_data)
 
-        if not user_data:
+        if not is_already_in_chat:
             await self.broadcast_msg_on_new_user_add(
-                data, user_list,
+                data, user_list, connected_user_list,
                 [websocket for user_data in chat_data for websocket in user_data.websockets if user_data.user_id != data.user_id]
             )
     
@@ -121,7 +121,7 @@ class OpenChatManager:
             websocket: WebSocket
     ):        
         if (
-            chat_data := await self.get_chat_data_or_msg_error(data.chat_id, websocket)
+            chat_data := await self.get_chat_data_or_msg_error(data.chat_id, self.chats, websocket)
         ) == None:
             return
         
@@ -141,7 +141,7 @@ class OpenChatManager:
             await websocket.send_json(data)
             return
         
-        user_request = self.get_user_request_or_none(data)
+        user_request = self.get_user_request_or_none(self.user_requests, data)
 
         if user_request:
             self.user_requests.remove(user_request)
@@ -175,19 +175,6 @@ class OpenChatManager:
         }
         await self.broadcast_msg(owner_sockets, request_join_data)
         await websocket.send_json(request_sent_data)
-    
-
-    def get_user_request_or_none(self, data: OpenChatMsgDataSchema):
-        request = None
-        for existing_request in self.user_requests:
-            if (
-                existing_request.chat_id == data.chat_id and 
-                existing_request.user_id == data.user_id
-            ):
-                request = existing_request
-                break
-        
-        return request
 
 
     async def manage_approved_user_request(
@@ -195,7 +182,7 @@ class OpenChatManager:
             data: OpenChatMsgDataSchema,
             websocket: WebSocket
     ):
-        user_request = self.get_user_request_or_none(data)
+        user_request = self.get_user_request_or_none(self.user_requests, data)
         if not user_request:
             await websocket.send_json(
                 {
@@ -244,7 +231,7 @@ class OpenChatManager:
             data: OpenChatMsgDataSchema,
             websocket: WebSocket
     ):
-        user_request = self.get_user_request_or_none(data)
+        user_request = self.get_user_request_or_none(self.user_requests, data)
 
         if not user_request:
             return
@@ -272,6 +259,7 @@ class OpenChatManager:
     async def broadcast_msg_on_new_user_add(
             self, data: OpenChatMsgDataSchema, 
             user_list: list,
+            connected_users: list,
             websockets: list[WebSocket]
     ):
         broadcast_data = {
@@ -279,7 +267,8 @@ class OpenChatManager:
             "chat_id": data.chat_id,
             "user_name": data.user_name,
             "user_id": data.user_id,
-            "chat_users": user_list
+            "chat_users": user_list,
+            "connected_users": connected_users
         }
         await self.broadcast_msg(websockets, broadcast_data)
     
@@ -290,7 +279,7 @@ class OpenChatManager:
         websocket: WebSocket
     ):
         if (
-            chat_data := await self.get_chat_data_or_msg_error(data.chat_id, websocket)
+            chat_data := await self.get_chat_data_or_msg_error(data.chat_id, self.chats, websocket)
         ) == None:
             return
         
@@ -307,9 +296,7 @@ class OpenChatManager:
         )
     
 
-    async def notify_chat_deletion(self, chat_id):
-        chat_data = self.chats.get(chat_id, [])
-
+    async def notify_chat_deletion(self, chat_id: str, chat_data: list[OpenChatUser]):
         resp_data = {
             "chat_id": chat_id,
             "type": open_chat_msg_type.chat_deleted
@@ -318,58 +305,58 @@ class OpenChatManager:
             [websocket for chat_user in chat_data for websocket in chat_user.websockets],
             resp_data
         )
-
-
-    async def broadcast_msg(
-        self, websockets: list[WebSocket], data: dict
-    ):
-        for websocket in websockets:
-            await websocket.send_json(data)
     
 
-    async def disconnect_user(self, websocket: WebSocket):
-        await self.manage_chat_disconnection(websocket)
-        self.manage_user_request_deletion(websocket)
+    async def disconnect_user(
+        self, websocket: WebSocket, chat_id: str, user_id: str
+    ):
+        await self.manage_chat_disconnection(websocket, chat_id, user_id)
+        self.manage_user_request_deletion(websocket, chat_id, user_id)
         
 
-    def manage_user_request_deletion(self, websocket: WebSocket):
+    def manage_user_request_deletion(
+        self, websocket: WebSocket, chat_id: str, user_id: str
+    ):
         for user_request in self.user_requests:
-            if websocket in user_request.websockets:
-                user_request.websockets.remove(websocket)
+            if (
+                user_request.chat_id == chat_id and 
+                user_request.user_id == user_id
+            ):
+                try:
+                    user_request.websockets.remove(websocket)
+                except ValueError:
+                    pass
             
-            if not user_request.websockets:
-                self.user_requests.remove(user_request)
+                if not user_request.websockets:
+                    try:
+                        self.user_requests.remove(user_request)
+                    except ValueError:
+                        pass
+                break
 
 
-    async def manage_chat_disconnection(self, websocket: WebSocket):
-        removed_user: list[dict] = []
+    async def manage_chat_disconnection(
+        self, websocket: WebSocket, chat_id: str, user_id: str
+    ):
+        chat_user = self.get_user_data_or_none(self.chats, chat_id, user_id)
+        if not chat_user:
+            return
+        
+        try:
+            chat_user.websockets.remove(websocket)
+        except ValueError:
+            pass
 
-        for chat_id, chat_data in self.chats.items():
-            for chat_user in chat_data:
-                if (
-                    websocket in chat_user.websockets
-                ):
-                    chat_user.websockets.remove(websocket)
-                
-                if not chat_user.websockets:
-                    chat_data.remove(chat_user)
-                    removed_user.append(
-                        {"user_id": chat_user.user_id, 
-                        "user_name": chat_user.name, 
-                        "chat_id": chat_id}
-                    )
-
-        for user_data in removed_user:
-            c_chat_id = user_data.get('chat_id')
+        if not chat_user.websockets:
             data = {
-                "chat_id": c_chat_id,
-                "user_id": user_data.get('user_id'),
-                "user_name": user_data.get('user_name'),
+                "chat_id": chat_id,
+                "user_id": user_id,
+                "user_name": chat_user.name,
                 "type": open_chat_msg_type.user_disconnect
             }
-            chat_data = self.chats.get(c_chat_id, [])
+            chat_data = self.chats.get(chat_id, [])
             await self.broadcast_msg(
-                [websocket for chat_user in chat_data for websocket in chat_user.websockets if chat_user.user_id != user_data.get('user_id')], 
+                [websocket for user in chat_data for websocket in user.websockets if user.user_id != user_id], 
                 data
             )
             

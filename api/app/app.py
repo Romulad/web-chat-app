@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from .routers.open_chat import router as open_chat_router
+from .settings import IN_PRODUCTION
 
 
 app = FastAPI(
@@ -17,11 +18,16 @@ app = FastAPI(
 app.include_router(open_chat_router)
 
 
-origins = [
-    "http://localhost:5173",
-    "http://localhost:4173",
-    "https://chat-ro.onrender.com",
-]
+if IN_PRODUCTION:
+    origins = [
+        "https://chat-ro.onrender.com",
+    ]
+else:
+    origins = [
+        "http://localhost:5173",
+        "http://localhost:4173",
+        "https://chat-ro.onrender.com",
+    ]
 
 app.add_middleware(
     CORSMiddleware,
