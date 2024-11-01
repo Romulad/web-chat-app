@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from .routers.open_chat import router as open_chat_router
 from .settings import OROGINS
+from .redis import redis_lifespan
 
 
 app = FastAPI(
@@ -13,7 +14,8 @@ app = FastAPI(
     4- Chat
     5- Once done click delete, to delete everything""", 
     title="Open chat",
-    summary="Server for a chat application" 
+    summary="Server for a chat application",
+    lifespan=redis_lifespan
 )
 
 app.include_router(open_chat_router)

@@ -1,7 +1,16 @@
-from fastapi import APIRouter, WebSocket, status, WebSocketDisconnect
+import datetime
+
+from fastapi import (
+    APIRouter, WebSocket, status, WebSocketDisconnect, Request, HTTPException
+)
 
 from ..req_resp_models import OpenChatInitSchema
 from ..chat_tools.open_chat_manager import open_chat_manager
+from ..utils.functions import get_redis_from_request
+from ..redis import redis_key
+from ..utils.typing import ChatUserList, ChatOwnersRef
+from ..schemas import OpenChatUser
+
 
 router = APIRouter(prefix="/open-chat")
 
@@ -12,9 +21,39 @@ router = APIRouter(prefix="/open-chat")
     response_model=OpenChatInitSchema
 )
 async def create_new_open_chat(
-    data: OpenChatInitSchema
+    request: Request, data: OpenChatInitSchema,
 ):
-    open_chat_manager.create_new_chat(data)
+    redis_c = get_redis_from_request(request)
+    chat_data : ChatUserList | None = redis_c.hget(redis_key.chats, data.chat_id)
+    chat_owners_ref : ChatOwnersRef | None = redis_c.get(redis_key.chat_owners_ref)
+
+    if chat_data and chat_data.get(data.chat_id):
+        raise HTTPException(
+            status.HTTP_409_CONFLICT, "Chat id already exists"
+        )
+
+    user_data = OpenChatUser(
+        created_at=datetime.datetime.now(datetime.timezone.utc).isoformat(),
+        is_owner=True,
+        name=data.initiator_name,
+        user_id=data.initiator_id
+    )
+
+    if chat_data:
+        chat_data[data.chat_id] = [user_data.model_dump()]
+    else:
+        chat_data = {}
+        chat_data[data.chat_id] = [user_data.model_dump()]
+
+    if chat_owners_ref:
+        chat_owners_ref[data.chat_id] = user_data.model_dump()
+    else:
+        chat_owners_ref = {}
+        chat_owners_ref[data.chat_id] = user_data.model_dump()
+
+    redis_c.hset(redis_key.chats, mapping=chat_data)
+    redis_c.hset(redis_key.chat_owners_ref, mapping=chat_owners_ref)
+    
     return data
 
 

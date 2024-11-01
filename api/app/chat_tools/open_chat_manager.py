@@ -9,25 +9,13 @@ from .open_chat_utils import OpenChatUtils
 
 
 class OpenChatManager(OpenChatUtils):
+    chat_user_sockets: dict[str, dict[str, list[WebSocket]]]
+    user_request_sockets: dict[str, list[WebSocket]]
+    
     chats : dict[str, list[OpenChatUser]] = {}
     user_requests: list[OpenChatRequestJoin] = []
     chat_owners_ref : dict[str, OpenChatUser] = {}
-
-    def create_new_chat(self, chat_data:OpenChatInitSchema):
-        if self.chats.get(chat_data.chat_id):
-            raise HTTPException(
-                status.HTTP_409_CONFLICT, "Chat id already exists"
-            )
-
-        user_data = OpenChatUser(
-            created_at=datetime.datetime.now(datetime.timezone.utc).isoformat(),
-            is_owner=True,
-            name=chat_data.initiator_name,
-            user_id=chat_data.initiator_id
-        )
-        self.chats[chat_data.chat_id] = [user_data]
-        self.chat_owners_ref[chat_data.chat_id] = user_data
-
+    chat_msgs: dict = {}
 
     async def delete_chat(self, chat_id:str):
         if (chat_data := self.chats.get(chat_id)):
