@@ -13,7 +13,6 @@ class OpenChatManager(OpenChatUtils):
     user_requests: list[OpenChatRequestJoin] = []
     chat_owners_ref : dict[str, OpenChatUser] = {}
 
-
     def create_new_chat(self, chat_data:OpenChatInitSchema):
         if self.chats.get(chat_data.chat_id):
             raise HTTPException(
