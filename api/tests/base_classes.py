@@ -1,19 +1,23 @@
 import datetime
 
+from fastapi.testclient import TestClient
+
 from ..app.chat_tools.open_chat_manager import open_chat_manager
 from ..app.req_resp_models import OpenChatInitSchema
 from ..app.schemas import OpenChatUser
 
 class BaseOpenChatClasse:
 
-    def create_new_open_chat(self):
+    def create_new_open_chat(self, client: TestClient):
+        route = "/open-chat/init"
+        
         new_chat_data = OpenChatInitSchema(
             chat_id="chat-testid",
             initiation_date=datetime.datetime.now().isoformat(),
             initiator_id="owern-ownerid",
             initiator_name="owner",
-        )
-        open_chat_manager.create_new_chat(new_chat_data)
+        ).model_dump()
+        client.post(route, json=new_chat_data)
 
         return "chat-testid", "owern-ownerid"
 

@@ -1,3 +1,4 @@
+import redis
 from fastapi.testclient import TestClient
 from fastapi import status
 
@@ -6,12 +7,18 @@ from ..app.req_resp_models import OpenChatInitSchema, OpenChatMsgDataSchema
 from ..app.utils.constants import open_chat_msg_type
 from .open_chat_route_common_performed import CommonTest
 from .base_classes import BaseOpenChatClasse
+from ..app.redis import redis_key
+from ..app.utils.functions import parse_json
 
 
 class TestCreateNewOpenChatRoute:
     route = "/open-chat/init"
 
-    def test_create_new_open_chat(self, client: TestClient):
+    def test_create_new_open_chat(
+        self, 
+        client: TestClient, 
+        redis_c: redis.Redis
+    ):
         data = [
             {
                 "chat_id": "randomId",
@@ -28,14 +35,25 @@ class TestCreateNewOpenChatRoute:
             resp = client.post(self.route, json=chat_data)
             assert resp.status_code == status.HTTP_201_CREATED
         
-        assert open_chat_manager.chats.get("randomId")
-        assert open_chat_manager.chats.get("randomId2")
-        assert len(open_chat_manager.chats) == 2
-        assert open_chat_manager.chats['randomId'][0].is_owner == True
-        assert open_chat_manager.chat_owners_ref.get("randomId")
-        assert open_chat_manager.chat_owners_ref.get("randomId2")
-        assert len(open_chat_manager.chat_owners_ref) == 2
-        assert open_chat_manager.chat_owners_ref['randomId'].name == "My name"
+        chat_one = redis_c.hget(redis_key.chats, "randomId")
+        chat_two = redis_c.hget(redis_key.chats, "randomId2")
+        chat_one_owner = redis_c.hget(redis_key.chat_owners_ref, "randomId")
+        chat_two_owner = redis_c.hget(redis_key.chat_owners_ref, "randomId")
+        assert chat_one
+        assert chat_two
+        assert chat_one_owner
+        assert chat_two_owner
+        assert len(redis_c.hgetall(redis_key.chats)) == 2
+        assert len(redis_c.hgetall(redis_key.chat_owners_ref)) == 2
+
+        chat_one = parse_json(chat_one)
+        chat_one_owner = parse_json(chat_one_owner)
+        assert chat_one[0]['is_owner'] == True
+        assert chat_one_owner["name"] == "My name"
+
+        for chat_id in ["randomId", "randomId2"]:
+            chat_msgs = parse_json(redis_c.hget(redis_key.chat_msgs, chat_id))
+            assert isinstance(chat_msgs, list)
 
 
     def test_create_existing_open_chat(self, client: TestClient):
@@ -58,29 +76,47 @@ class TestCreateNewOpenChatRoute:
         existing_resp = client.post(self.route, json=data[0])
         assert existing_resp.status_code == status.HTTP_409_CONFLICT
         assert "id already exists" in existing_resp.json().get('detail')
+    
+    def test_create_chat_with_invalid_data(self, client: TestClient):
+        data = [
+            {
+                "chat_id": "randomId",
+                "initiator_id": "superuserid",
+            },
+            {
+                "chat_id": "randomId2",
+                "initiator_name": "My name",
+            }
+        ]
+        for chat_data in data:
+            resp = client.post(self.route, json=chat_data)
+            assert resp.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
 
 
-class TestDeleteOpenChatRoute:
+class TestDeleteOpenChatRoute(BaseOpenChatClasse):
     route = "/open-chat/"
 
-    def test_delete_open_chat_with_invalid_id(self, client:TestClient):
+    
+    def test_delete_open_chat_with_invalid_id(
+        self, 
+        client:TestClient, 
+    ):
         resp = client.delete(self.route + "fakeId")
         assert resp.status_code == status.HTTP_404_NOT_FOUND
     
-    def test_delete_open_chat(self, client:TestClient):
-        open_chat_manager.create_new_chat(
-            OpenChatInitSchema(
-                chat_id="randomId",
-                initiation_date="",
-                initiator_id="myUserId",
-                initiator_name="my name",
-            )
-        )
+    def test_delete_open_chat(
+        self, 
+        client:TestClient,
+        redis_c: redis.Redis
+    ):
+        chat_id, _ = self.create_new_open_chat(client)
 
-        resp = client.delete(self.route + "randomId")
+        resp = client.delete(self.route + chat_id)
         assert resp.status_code == status.HTTP_204_NO_CONTENT
-        assert open_chat_manager.chats.get("randomId") == None
-        assert len(open_chat_manager.chats) == 0
+        assert redis_c.hget(redis_key.chats, chat_id) == None
+        assert redis_c.hget(redis_key.chat_owners_ref, chat_id) == None
+        assert redis_c.hget(redis_key.chat_msgs, chat_id) == None
+        assert len(redis_c.hgetall(redis_key.chats)) == 0
 
 
 class TestOpenChatAddToChat(CommonTest, BaseOpenChatClasse):

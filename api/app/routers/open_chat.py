@@ -6,9 +6,8 @@ from fastapi import (
 
 from ..req_resp_models import OpenChatInitSchema
 from ..chat_tools.open_chat_manager import open_chat_manager
-from ..utils.functions import get_redis_from_request
+from ..utils.functions import get_redis_from_request, parse_json, stringify
 from ..redis import redis_key
-from ..utils.typing import ChatUserList, ChatOwnersRef
 from ..schemas import OpenChatUser
 
 
@@ -24,10 +23,9 @@ async def create_new_open_chat(
     request: Request, data: OpenChatInitSchema,
 ):
     redis_c = get_redis_from_request(request)
-    chat_data : ChatUserList | None = redis_c.hget(redis_key.chats, data.chat_id)
-    chat_owners_ref : ChatOwnersRef | None = redis_c.get(redis_key.chat_owners_ref)
+    chat_data : str | None = redis_c.hget(redis_key.chats, data.chat_id)
 
-    if chat_data and chat_data.get(data.chat_id):
+    if chat_data:
         raise HTTPException(
             status.HTTP_409_CONFLICT, "Chat id already exists"
         )
@@ -37,31 +35,39 @@ async def create_new_open_chat(
         is_owner=True,
         name=data.initiator_name,
         user_id=data.initiator_id
-    )
+    ).model_dump()
 
-    if chat_data:
-        chat_data[data.chat_id] = [user_data.model_dump()]
-    else:
-        chat_data = {}
-        chat_data[data.chat_id] = [user_data.model_dump()]
+    chat_users = [user_data]
 
-    if chat_owners_ref:
-        chat_owners_ref[data.chat_id] = user_data.model_dump()
-    else:
-        chat_owners_ref = {}
-        chat_owners_ref[data.chat_id] = user_data.model_dump()
+    redis_c.hset(redis_key.chats, data.chat_id, stringify(chat_users))
+    redis_c.hset(redis_key.chat_owners_ref, data.chat_id, stringify(user_data))
+    redis_c.hset(redis_key.chat_msgs, data.chat_id, stringify([]))
 
-    redis_c.hset(redis_key.chats, mapping=chat_data)
-    redis_c.hset(redis_key.chat_owners_ref, mapping=chat_owners_ref)
-    
     return data
 
 
 @router.delete("/{chat_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_open_chat(
-    chat_id
+    request: Request, chat_id: str
 ):
-    await open_chat_manager.delete_chat(chat_id)
+    redis_c = get_redis_from_request(request)
+    chat_users : str | None = redis_c.hget(redis_key.chats, chat_id)
+    chat_owner : str | None = redis_c.hget(redis_key.chat_owners_ref, chat_id)
+    
+    if not chat_users:
+        raise HTTPException(
+            status.HTTP_404_NOT_FOUND,
+            "Chat can't be found"
+        )
+    
+    owner_data = OpenChatUser(**parse_json(chat_owner))
+
+    redis_c.hdel(redis_key.chats, chat_id)
+    redis_c.hdel(redis_key.chat_owners_ref, chat_id)
+    redis_c.hdel(redis_key.chat_msgs, chat_id)
+
+    await open_chat_manager.manage_chat_deletion(chat_id, owner_data.user_id)
+
     return ""
 
 

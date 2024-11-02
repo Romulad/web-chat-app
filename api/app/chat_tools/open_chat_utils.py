@@ -5,18 +5,21 @@ from fastapi import WebSocket
 from ..req_resp_models import OpenChatMsgDataSchema
 from ..utils.constants import open_chat_msg_type
 from ..schemas import OpenChatUser, OpenChatRequestJoin
+from ..utils.functions import get_redis_from_request, parse_json
+from ..redis import redis_key
 
 
 class OpenChatUtils:
 
     async def get_chat_data_or_msg_error(
-        self, chat_id,  chats: dict[str, list[OpenChatUser]], websocket: WebSocket
-    ):
-        if (chat_data := chats.get(chat_id)) == None:
+        self, chat_id, websocket: WebSocket
+    ) -> list[dict] | None:
+        redis_c = get_redis_from_request(websocket)
+        if (chat_data := redis_c.hget(redis_key.chats, chat_id)) == None:
             resp_data = {"msg": "Chat not found", "chat_id": chat_id, "type": open_chat_msg_type.error}
             await websocket.send_json(resp_data)
         else:
-            return chat_data
+            return parse_json(chat_data)
     
 
     async def get_user_data_or_msg_error(
@@ -55,13 +58,13 @@ class OpenChatUtils:
     
 
     def get_user_request_or_none(
-        self, user_requests: list[OpenChatRequestJoin], data: OpenChatMsgDataSchema
-    ):
+        self, data: OpenChatMsgDataSchema, user_requests: list[dict]
+    ) -> dict | None:
         request = None
         for existing_request in user_requests:
+            parsed_data = OpenChatRequestJoin(**existing_request)
             if (
-                existing_request.chat_id == data.chat_id and 
-                existing_request.user_id == data.user_id
+                parsed_data.user_id == data.user_id
             ):
                 request = existing_request
                 break
