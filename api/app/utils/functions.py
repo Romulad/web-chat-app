@@ -1,8 +1,9 @@
 import json
 
 from fastapi import WebSocket, Request
-
 from redis import Redis
+
+from ..redis import redis_key
 
 
 def get_redis_from_request(request: WebSocket | Request) -> Redis:
@@ -15,3 +16,13 @@ def parse_json(data: str) -> dict | list:
 
 def stringify(data: list | dict) -> str:
     return json.dumps(data)
+
+
+def get_chat_users_from_redis_or_none(redis_c: Redis, chat_id) -> list | None:
+    chat_users = redis_c.hget(redis_key.chats, chat_id)
+    return parse_json(chat_users) if chat_users else None
+
+
+def get_chat_msgs_from_redis_or_none(redis_c: Redis, chat_id) -> list | None:
+    chat_msgs = redis_c.hget(redis_key.chat_msgs, chat_id)
+    return parse_json(chat_msgs) if chat_msgs else None

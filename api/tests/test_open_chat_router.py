@@ -3,12 +3,12 @@ from fastapi.testclient import TestClient
 from fastapi import status
 
 from ..app.chat_tools.open_chat_manager import open_chat_manager
-from ..app.req_resp_models import OpenChatInitSchema, OpenChatMsgDataSchema
+from ..app.req_resp_models import OpenChatMsgDataSchema
 from ..app.utils.constants import open_chat_msg_type
 from .open_chat_route_common_performed import CommonTest
-from .base_classes import BaseOpenChatClasse
+from .base_classes import BaseOpenChatTestClasse
 from ..app.redis import redis_key
-from ..app.utils.functions import parse_json
+from ..app.utils.functions import parse_json, get_chat_users_from_redis_or_none
 
 
 class TestCreateNewOpenChatRoute:
@@ -93,25 +93,34 @@ class TestCreateNewOpenChatRoute:
             assert resp.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
 
 
-class TestDeleteOpenChatRoute(BaseOpenChatClasse):
+class TestDeleteOpenChatRoute(BaseOpenChatTestClasse):
     route = "/open-chat/"
 
-    
     def test_delete_open_chat_with_invalid_id(
         self, 
         client:TestClient, 
     ):
-        resp = client.delete(self.route + "fakeId")
+        resp = client.delete(f"{self.route}fakeId/fakeId")
         assert resp.status_code == status.HTTP_404_NOT_FOUND
-    
+
+
+    def test_delete_open_chat_with_invalid_admin_id(
+        self, 
+        client:TestClient, 
+    ):
+        chat_id, _ = self.create_new_open_chat(client)
+        resp = client.delete(f"{self.route}{chat_id}/fakeId")
+        assert resp.status_code == status.HTTP_400_BAD_REQUEST
+
+
     def test_delete_open_chat(
         self, 
         client:TestClient,
         redis_c: redis.Redis
     ):
-        chat_id, _ = self.create_new_open_chat(client)
+        chat_id, owner_id = self.create_new_open_chat(client)
 
-        resp = client.delete(self.route + chat_id)
+        resp = client.delete(f"{self.route}{chat_id}/{owner_id}")
         assert resp.status_code == status.HTTP_204_NO_CONTENT
         assert redis_c.hget(redis_key.chats, chat_id) == None
         assert redis_c.hget(redis_key.chat_owners_ref, chat_id) == None
@@ -119,12 +128,12 @@ class TestDeleteOpenChatRoute(BaseOpenChatClasse):
         assert len(redis_c.hgetall(redis_key.chats)) == 0
 
 
-class TestOpenChatAddToChat(CommonTest, BaseOpenChatClasse):
+class TestOpenChatAddToChat(CommonTest, BaseOpenChatTestClasse):
     route = "/open-chat/ws/"
     msg_type = open_chat_msg_type.open_chat_add
 
     def test_add_existing_user_to_open_chat(self, client:TestClient):
-        chat_id, owner_id = self.create_new_open_chat()
+        chat_id, owner_id = self.create_new_open_chat(client)
 
         new_msg_data = OpenChatMsgDataSchema(
             chat_id=chat_id,
@@ -142,6 +151,7 @@ class TestOpenChatAddToChat(CommonTest, BaseOpenChatClasse):
             assert len(added_data.get('chat_users')) == 1
             assert added_data.get('chat_users')[0]["user_id"] == owner_id
         
+            # try to add the same user again to the same chat
             with client.websocket_connect(self.route + chat_id + "/" + owner_id) as wb1:
                 wb1.send_json(new_msg_data.model_dump())
                 added_data1 = wb1.receive_json()
@@ -150,13 +160,18 @@ class TestOpenChatAddToChat(CommonTest, BaseOpenChatClasse):
                 assert len(added_data1.get('chat_users')) == 1
                 assert added_data1.get('chat_users')[0]["user_id"] == owner_id
         
-                assert len(open_chat_manager.chats.get(chat_id)) == 1
-                assert len(open_chat_manager.chats.get(chat_id)[0].websockets) == 2
+                assert len(open_chat_manager.chat_user_sockets.get(chat_id)) == 1
+                assert len(
+                    open_chat_manager
+                    .chat_user_sockets
+                    .get(chat_id)
+                    .get(owner_id)
+                ) == 2
 
 
-    def test_add_user_to_open_chat(self, client: TestClient):
-        chat_id, _ = self.create_new_open_chat()
-        self.add_user_to_open_chat(chat_id, "guess_user_id", "guess")
+    def test_add_user_to_open_chat(self, client: TestClient, redis_c: redis.Redis):
+        chat_id, _ = self.create_new_open_chat(client)
+        self.add_user_to_open_chat(chat_id, "guess_user_id", redis_c, "guess")
         new_msg_data = OpenChatMsgDataSchema(
             chat_id=chat_id,
             data="",
@@ -172,12 +187,14 @@ class TestOpenChatAddToChat(CommonTest, BaseOpenChatClasse):
             assert added_data.get('chat_id')
             assert added_data.get('chat_users')
             assert added_data.get('connected_users')
+            assert isinstance(added_data.get('chat_msgs'), list)
             assert len(added_data.get('chat_users')) == 2
             assert len(added_data.get('connected_users')) == 1
-            assert len(open_chat_manager.chats.get(chat_id)) == 2
+            assert len(open_chat_manager.chat_user_sockets.get(chat_id)) == 1
     
-    def test_add_not_allowed_user_to_open_chat(self, client: TestClient):
-        chat_id, _ = self.create_new_open_chat()
+
+    def test_add_not_allowed_user_to_open_chat(self, client: TestClient, redis_c: redis.Redis):
+        chat_id, _ = self.create_new_open_chat(client)
         new_msg_data = OpenChatMsgDataSchema(
             chat_id=chat_id,
             data="",
@@ -191,13 +208,13 @@ class TestOpenChatAddToChat(CommonTest, BaseOpenChatClasse):
             added_data = wb.receive_json()
             assert added_data.get('type') == open_chat_msg_type.not_allowed_user
             assert "not allowed to acess this chat" in added_data.get('msg')
-            assert len(open_chat_manager.chats.get(chat_id)) == 1
+            assert len(get_chat_users_from_redis_or_none(redis_c, chat_id)) == 1
     
 
-    def test_broadcast_on_new_add(self, client: TestClient):
-        chat_id, owner_id = self.create_new_open_chat()
-        self.add_user_to_open_chat(chat_id, "guess_id", "guess")
-        self.add_user_to_open_chat(chat_id, "guess_id2", "guess")
+    def test_broadcast_on_new_user_add(self, client: TestClient, redis_c: redis.Redis):
+        chat_id, owner_id = self.create_new_open_chat(client)
+        self.add_user_to_open_chat(chat_id, "guess_id", redis_c, "guess")
+        self.add_user_to_open_chat(chat_id, "guess_id2", redis_c,  "guess")
 
         owner_msg_data = OpenChatMsgDataSchema(
             chat_id=chat_id,

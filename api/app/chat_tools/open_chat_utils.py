@@ -5,7 +5,7 @@ from fastapi import WebSocket
 from ..req_resp_models import OpenChatMsgDataSchema
 from ..utils.constants import open_chat_msg_type
 from ..schemas import OpenChatUser, OpenChatRequestJoin
-from ..utils.functions import get_redis_from_request, parse_json
+from ..utils.functions import get_redis_from_request, parse_json, get_chat_users_from_redis_or_none
 from ..redis import redis_key
 
 
@@ -23,12 +23,13 @@ class OpenChatUtils:
     
 
     async def get_user_data_or_msg_error(
-        self, chat_data: list[OpenChatUser], user_id: str, websocket: WebSocket
+        self, chat_data: list[dict], user_id: str, websocket: WebSocket
     ):
         user_data = None
         for existing_user in chat_data:
-            if existing_user.user_id == user_id:
-                user_data = existing_user
+            validated_data = OpenChatUser(**existing_user)
+            if validated_data.user_id == user_id:
+                user_data = validated_data
                 break
 
         if not user_data:
@@ -42,17 +43,20 @@ class OpenChatUtils:
     
 
     def get_user_data_or_none(
-            self, chats: dict[str, list[OpenChatUser]], 
-            chat_id, user_id
+            self, 
+            webSocket: WebSocket, 
+            chat_id, 
+            user_id
     ):
-        chat_users = chats.get(chat_id)
+        chat_users = get_chat_users_from_redis_or_none(get_redis_from_request(webSocket), chat_id)
 
         if not chat_users:
             return None
 
         for chat_user in chat_users:
-            if chat_user.user_id == user_id:
-                return chat_user
+            validated_data = OpenChatUser(**chat_user)
+            if validated_data.user_id == user_id:
+                return validated_data
         
         return None
     

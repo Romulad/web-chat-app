@@ -6,18 +6,14 @@ from ..req_resp_models import OpenChatInitSchema, OpenChatMsgDataSchema
 from ..utils.constants import open_chat_msg_type
 from ..schemas import OpenChatUser, OpenChatRequestJoin
 from .open_chat_utils import OpenChatUtils
-from ..utils.functions import get_redis_from_request, parse_json, stringify
+from ..utils.functions import get_chat_msgs_from_redis_or_none, get_redis_from_request
 from ..redis import redis_key
 
 
 class OpenChatManager(OpenChatUtils):
     chat_user_sockets: dict[str, dict[str, list[WebSocket]]] = {}
     user_request_sockets: dict[str, dict[str, list[WebSocket]]] = {}
-    
-    chats : dict[str, list[OpenChatUser]] = {}
-    user_requests: list[OpenChatRequestJoin] = []
-    chat_owners_ref : dict[str, OpenChatUser] = {}
-    chat_msgs: dict = {}
+
 
     async def on_new_message(self, websocket: WebSocket):
         data = await websocket.receive_json()
@@ -42,7 +38,7 @@ class OpenChatManager(OpenChatUtils):
             existing_websockets: list[WebSocket]=None
     ):
         if (
-            chat_data := await self.get_chat_data_or_msg_error(data.chat_id, self.chats, websocket)
+            chat_data := await self.get_chat_data_or_msg_error(data.chat_id, websocket)
         ) == None:
             return
 
@@ -53,45 +49,42 @@ class OpenChatManager(OpenChatUtils):
         ) == None:
             return
         
-        chat_data.remove(user_data)
-        old_websockets = user_data.websockets
-        is_already_in_chat = len(user_data.websockets) > 0
-
-        if not existing_websockets:
-            old_websockets.append(websocket)
-        else:
-            old_websockets.extend(existing_websockets)
-
-        user_data.websockets = old_websockets
-        chat_data.append(user_data)
-        self.chats[data.chat_id] = chat_data
+        chat_users_conn = self.chat_user_sockets.get(data.chat_id, {})
+        user_conn = chat_users_conn.get(data.user_id, [])
+        user_conn.extend(existing_websockets) if existing_websockets else user_conn.append(websocket)
+        chat_users_conn[data.user_id] = user_conn
+        self.chat_user_sockets[data.chat_id] = chat_users_conn
         
-        user_list = [
-            chat_user.model_dump(exclude={"websockets"}) for chat_user in chat_data
-        ]
-        connected_user_list = [
-            chat_user.model_dump(exclude={"websockets"}) 
-            for chat_user in chat_data if chat_user.websockets
+        connected_user_ids = [
+            user_conn_id for user_conn_id, _ in chat_users_conn.items()
         ]
 
         add_to_chat_data = {
             "type": open_chat_msg_type.added_to_open_chat,
             "chat_id": data.chat_id,
-            "chat_users": user_list,
-            "connected_users": connected_user_list,
-            "chat_msgs": data.data,
+            "chat_users": chat_data,
+            "connected_users": connected_user_ids,
+            "chat_msgs": get_chat_msgs_from_redis_or_none(
+                get_redis_from_request(websocket), data.chat_id
+            ),
         }
         if not existing_websockets:
             await websocket.send_json(add_to_chat_data)
         else:
             await self.broadcast_msg(existing_websockets, add_to_chat_data)
 
-        if not is_already_in_chat:
+        if (
+            (existing_websockets and (len(user_conn) == len(existing_websockets))) or 
+            (not existing_websockets and len(user_conn) == 1)
+        ):
             await self.broadcast_msg_on_new_user_add(
-                data, user_list, connected_user_list,
-                [websocket for user_data in chat_data for websocket in user_data.websockets if user_data.user_id != data.user_id]
+                data, chat_data, connected_user_ids,
+                [
+                    websocket for conn_user_id, conns in chat_users_conn.items() 
+                    for websocket in conns if user_data.user_id != conn_user_id
+                ]
             )
-    
+
 
     async def manage_user_request(
             self,
@@ -108,9 +101,9 @@ class OpenChatManager(OpenChatUtils):
         for chat_user in chat_data:
             parsed_data = OpenChatUser(**chat_user)
             if parsed_data.is_owner and chat_connections.get(parsed_data.user_id):
-                connections = chat_connections.get(parsed_data.user_id)
-                if connections:
-                   owner_sockets.extend(connections) 
+                owner_connections = chat_connections.get(parsed_data.user_id)
+                if owner_connections:
+                   owner_sockets.extend(owner_connections) 
                    break
         
         if not owner_sockets:
@@ -122,10 +115,8 @@ class OpenChatManager(OpenChatUtils):
             await websocket.send_json(data)
             return
 
-        connection_already_exist = False
         request_connections = self.user_request_sockets.get(data.chat_id, {})
         connections = request_connections.get(data.user_id, [])
-        connection_already_exist = len(connections) > 0
         connections.append(websocket)
         request_connections[data.user_id] = connections
         self.user_request_sockets[data.chat_id] = request_connections
@@ -140,9 +131,9 @@ class OpenChatManager(OpenChatUtils):
             "type": open_chat_msg_type.request_join_sent,
             "chat_id": data.chat_id,
             "msg": (
-                f"Request to join sent for {data.chat_id}" 
-                if not connection_already_exist 
-                else f"Request to join sent for {data.chat_id} again"
+                f"Request to join sent for {data.chat_id} again"
+                if len(connections) > 1
+                else f"Request to join sent for {data.chat_id}" 
             )
         }
         await self.broadcast_msg(owner_sockets, request_join_data)
@@ -298,59 +289,64 @@ class OpenChatManager(OpenChatUtils):
             del self.user_request_sockets[chat_id]
     
 
-    async def disconnect_user(
+    async def disconnect_websocket(
         self, websocket: WebSocket, chat_id: str, user_id: str
     ):
-        await self.manage_chat_disconnection(websocket, chat_id, user_id)
-        self.manage_user_request_deletion(websocket, chat_id, user_id)
+        await self.delete_user_socket_from_chat(websocket, chat_id, user_id)
+        self.delete_user_socket_from_request_join(websocket, chat_id, user_id)
         
 
-    def manage_user_request_deletion(
+    def delete_user_socket_from_request_join(
         self, websocket: WebSocket, chat_id: str, user_id: str
     ):
-        for user_request in self.user_requests:
-            if (
-                user_request.chat_id == chat_id and 
-                user_request.user_id == user_id
-            ):
-                try:
-                    user_request.websockets.remove(websocket)
-                except ValueError:
-                    pass
-            
-                if not user_request.websockets:
-                    try:
-                        self.user_requests.remove(user_request)
-                    except ValueError:
-                        pass
-                break
+        chat_requests_join = self.user_request_sockets.get(chat_id, {})
+        request_socket_conns = chat_requests_join.get(user_id)
+
+        if request_socket_conns:
+            try:
+                request_socket_conns.remove(websocket)
+            except ValueError:
+                pass
+        
+        if not request_socket_conns:
+            try:
+                del chat_requests_join[user_id]
+            except KeyError:
+                pass
 
 
-    async def manage_chat_disconnection(
+    async def delete_user_socket_from_chat(
         self, websocket: WebSocket, chat_id: str, user_id: str
     ):
-        chat_user = self.get_user_data_or_none(self.chats, chat_id, user_id)
+        chat_user = self.get_user_data_or_none(websocket, chat_id, user_id)
         if not chat_user:
             return
         
+        chat_conns = self.chat_user_sockets.get(chat_id, {})
+        user_conns = chat_conns.get(user_id, [])
+
         try:
-            chat_user.websockets.remove(websocket)
+            user_conns.remove(websocket)
         except ValueError:
             pass
 
-        if not chat_user.websockets:
+        if not user_conns:
             data = {
                 "chat_id": chat_id,
                 "user_id": user_id,
                 "user_name": chat_user.name,
                 "type": open_chat_msg_type.user_disconnect
             }
-            chat_data = self.chats.get(chat_id, [])
             await self.broadcast_msg(
-                [websocket for user in chat_data for websocket in user.websockets if user.user_id != user_id], 
+                [
+                    websocket for connec_user_id, conns in chat_conns.items() 
+                    for websocket in conns if connec_user_id != user_id
+                ], 
                 data
             )
+            del chat_conns[user_id]
+           
             
-        
+
 
 open_chat_manager = OpenChatManager()

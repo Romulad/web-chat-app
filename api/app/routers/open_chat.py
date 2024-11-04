@@ -46,13 +46,13 @@ async def create_new_open_chat(
     return data
 
 
-@router.delete("/{chat_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/{chat_id}/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_open_chat(
-    request: Request, chat_id: str
+    request: Request, chat_id: str, user_id: str
 ):
     redis_c = get_redis_from_request(request)
-    chat_users : str | None = redis_c.hget(redis_key.chats, chat_id)
-    chat_owner : str | None = redis_c.hget(redis_key.chat_owners_ref, chat_id)
+    chat_users = redis_c.hget(redis_key.chats, chat_id)
+    chat_owner = redis_c.hget(redis_key.chat_owners_ref, chat_id)
     
     if not chat_users:
         raise HTTPException(
@@ -61,6 +61,11 @@ async def delete_open_chat(
         )
     
     owner_data = OpenChatUser(**parse_json(chat_owner))
+    if owner_data.user_id != user_id:
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            "You need to be the creator of the chat to be able to delete it"
+        )
 
     redis_c.hdel(redis_key.chats, chat_id)
     redis_c.hdel(redis_key.chat_owners_ref, chat_id)
@@ -80,4 +85,4 @@ async def open_chat_messages(
         while True:
             await open_chat_manager.on_new_message(websocket)
     except WebSocketDisconnect:
-        await open_chat_manager.disconnect_user(websocket, chat_id, user_id)
+        await open_chat_manager.disconnect_websocket(websocket, chat_id, user_id)

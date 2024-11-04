@@ -1,13 +1,13 @@
 from fastapi.testclient import TestClient
 
-from .base_classes import BaseOpenChatClasse
+from .base_classes import BaseOpenChatTestClasse
 from .open_chat_route_common_performed import CommonTest
 from ..app.utils.constants import open_chat_msg_type
 from ..app.req_resp_models import OpenChatMsgDataSchema
 from ..app.chat_tools.open_chat_manager import open_chat_manager
 
 
-class TestOpenchatDisconnection(BaseOpenChatClasse, CommonTest):
+class TestOpenchatDisconnection(BaseOpenChatTestClasse, CommonTest):
     route = "/open-chat/ws/"
     msg_type = open_chat_msg_type.open_chat_add
 
