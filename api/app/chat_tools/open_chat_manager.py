@@ -6,7 +6,11 @@ from ..req_resp_models import OpenChatInitSchema, OpenChatMsgDataSchema
 from ..utils.constants import open_chat_msg_type
 from ..schemas import OpenChatUser, OpenChatRequestJoin
 from .open_chat_utils import OpenChatUtils
-from ..utils.functions import get_chat_msgs_from_redis_or_none, get_redis_from_request
+from ..utils.functions import (
+    get_chat_msgs_from_redis_or_none, 
+    get_redis_from_request,
+    get_owner_data_from_redis_or_none
+)
 from ..redis import redis_key
 
 
@@ -92,19 +96,23 @@ class OpenChatManager(OpenChatUtils):
             websocket: WebSocket
     ):        
         if (
-            chat_data := await self.get_chat_data_or_msg_error(data.chat_id, websocket)
+            await self.get_chat_data_or_msg_error(data.chat_id, websocket)
         ) == None:
             return
         
+        redis_c = get_redis_from_request(websocket)
+        owner_data = get_owner_data_from_redis_or_none(redis_c, data.chat_id)
+        owner_data = OpenChatUser(**owner_data) if owner_data else None
+        
         chat_connections = self.chat_user_sockets.get(data.chat_id, {})
         owner_sockets: list[WebSocket] = []
-        for chat_user in chat_data:
-            parsed_data = OpenChatUser(**chat_user)
-            if parsed_data.is_owner and chat_connections.get(parsed_data.user_id):
-                owner_connections = chat_connections.get(parsed_data.user_id)
-                if owner_connections:
-                   owner_sockets.extend(owner_connections) 
-                   break
+        if (
+            owner_data and 
+            owner_data.is_owner and 
+            (owner_connections := chat_connections.get(owner_data.user_id))
+        ):
+            if owner_connections:
+                owner_sockets.extend(owner_connections)
         
         if not owner_sockets:
             data = {
@@ -132,8 +140,8 @@ class OpenChatManager(OpenChatUtils):
             "chat_id": data.chat_id,
             "msg": (
                 f"Request to join sent for {data.chat_id} again"
-                if len(connections) > 1
-                else f"Request to join sent for {data.chat_id}" 
+                if len(connections) > 1 else 
+                f"Request to join sent for {data.chat_id}" 
             )
         }
         await self.broadcast_msg(owner_sockets, request_join_data)
@@ -324,7 +332,7 @@ class OpenChatManager(OpenChatUtils):
         
         chat_conns = self.chat_user_sockets.get(chat_id, {})
         user_conns = chat_conns.get(user_id, [])
-
+        
         try:
             user_conns.remove(websocket)
         except ValueError:
@@ -344,7 +352,10 @@ class OpenChatManager(OpenChatUtils):
                 ], 
                 data
             )
-            del chat_conns[user_id]
+            try:
+                del chat_conns[user_id]
+            except KeyError:
+                pass
            
             
 

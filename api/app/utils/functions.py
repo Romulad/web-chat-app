@@ -26,3 +26,8 @@ def get_chat_users_from_redis_or_none(redis_c: Redis, chat_id) -> list | None:
 def get_chat_msgs_from_redis_or_none(redis_c: Redis, chat_id) -> list | None:
     chat_msgs = redis_c.hget(redis_key.chat_msgs, chat_id)
     return parse_json(chat_msgs) if chat_msgs else None
+
+
+def get_owner_data_from_redis_or_none(redis_c: Redis, chat_id) -> dict | None:
+    owner_data = redis_c.hget(redis_key.chat_owners_ref, chat_id)
+    return parse_json(owner_data) if owner_data else None
