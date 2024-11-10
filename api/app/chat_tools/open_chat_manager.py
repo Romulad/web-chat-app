@@ -1,15 +1,17 @@
 import datetime
 
-from fastapi import HTTPException, status, WebSocket
+from fastapi import WebSocket, WebSocketDisconnect, status
 
-from ..req_resp_models import OpenChatInitSchema, OpenChatMsgDataSchema
+from ..req_resp_models import OpenChatMsgDataSchema
 from ..utils.constants import open_chat_msg_type
-from ..schemas import OpenChatUser, OpenChatRequestJoin
+from ..schemas import OpenChatUser, OpenChatMsg
 from .open_chat_utils import OpenChatUtils
 from ..utils.functions import (
     get_chat_msgs_from_redis_or_none, 
     get_redis_from_request,
-    get_owner_data_from_redis_or_none
+    get_owner_data_from_redis_or_none,
+    stringify,
+    get_chat_users_from_redis_or_none
 )
 from ..redis import redis_key
 
@@ -18,10 +20,14 @@ class OpenChatManager(OpenChatUtils):
     chat_user_sockets: dict[str, dict[str, list[WebSocket]]] = {}
     user_request_sockets: dict[str, dict[str, list[WebSocket]]] = {}
 
-
     async def on_new_message(self, websocket: WebSocket):
         data = await websocket.receive_json()
         parsed_data = OpenChatMsgDataSchema(**data)
+
+        if (
+            await self.get_chat_data_or_msg_error(parsed_data.chat_id, websocket)
+        ) == None:
+            return
         
         if parsed_data.type == open_chat_msg_type.open_chat_add:
             await self.manage_add_user_to_chat(parsed_data, websocket)
@@ -41,11 +47,9 @@ class OpenChatManager(OpenChatUtils):
             websocket: WebSocket = None,
             existing_websockets: list[WebSocket]=None
     ):
-        if (
-            chat_data := await self.get_chat_data_or_msg_error(data.chat_id, websocket)
-        ) == None:
-            return
-
+        redis_c = get_redis_from_request(websocket if websocket else existing_websockets[0])
+        chat_data = get_chat_users_from_redis_or_none(redis_c, data.chat_id)
+        
         if(
             user_data := await self.get_user_data_or_msg_error(
                 chat_data, data.user_id, websocket
@@ -69,7 +73,7 @@ class OpenChatManager(OpenChatUtils):
             "chat_users": chat_data,
             "connected_users": connected_user_ids,
             "chat_msgs": get_chat_msgs_from_redis_or_none(
-                get_redis_from_request(websocket), data.chat_id
+                redis_c, data.chat_id
             ),
         }
         if not existing_websockets:
@@ -95,15 +99,11 @@ class OpenChatManager(OpenChatUtils):
             data: OpenChatMsgDataSchema,
             websocket: WebSocket
     ):        
-        if (
-            await self.get_chat_data_or_msg_error(data.chat_id, websocket)
-        ) == None:
-            return
-        
         redis_c = get_redis_from_request(websocket)
         owner_data = get_owner_data_from_redis_or_none(redis_c, data.chat_id)
         owner_data = OpenChatUser(**owner_data) if owner_data else None
         
+        # get owner connections
         chat_connections = self.chat_user_sockets.get(data.chat_id, {})
         owner_sockets: list[WebSocket] = []
         if (
@@ -153,78 +153,91 @@ class OpenChatManager(OpenChatUtils):
             data: OpenChatMsgDataSchema,
             websocket: WebSocket
     ):
-        user_request = self.get_user_request_or_none(self.user_requests, data)
-        if not user_request:
+        redis_c = get_redis_from_request(websocket)
+        chat_users = get_chat_users_from_redis_or_none(redis_c, data.chat_id)
+
+        is_admin = self.is_chat_admin(websocket, data.chat_id, data.owner_id)
+        if not is_admin:
+            await websocket.send_json({"type": open_chat_msg_type.not_allowed_user})
+            return
+
+        chat_request_join = self.user_request_sockets.get(data.chat_id, {})
+        user_request_conns = chat_request_join.get(data.user_id)
+        if not user_request_conns:
             await websocket.send_json(
                 {
                     "type": open_chat_msg_type.notification,
-                    "msg": f"User request can't be found anymore; for ${data.user_name}",
+                    "msg": f"User request can't be found anymore; for {data.user_name}",
                     "chat_id": data.chat_id,
                     "user_id": data.user_id
                 }
             )
             return
     
-        self.user_requests.remove(user_request)
-
-        if not user_request.websockets:
-            await websocket.send_json(
-                {
-                    "type": open_chat_msg_type.notification,
-                    "msg": f"User request was approved but ${data.user_name} is not connected anymore",
-                    "chat_id": data.chat_id,
-                    "user_id": data.user_id
-                }
-            )
-            return
-
+        del chat_request_join[data.user_id] 
+        self.user_request_sockets[data.chat_id] = chat_request_join
+        
+        chat_users.append(OpenChatUser(
+            user_id=data.user_id,
+            is_owner=False,
+            name=data.user_name,
+            created_at=datetime.datetime.now().isoformat()
+        ).model_dump())
+        redis_c.hset(redis_key.chats, data.chat_id, stringify(chat_users))
+    
         request_approved_data = {
             "type": open_chat_msg_type.request_approved,
             "chat_id": data.chat_id,
         }
-        await self.broadcast_msg(user_request.websockets, request_approved_data)
-        await self.add_to_chat_on_approved_request(user_request, data.data)
-
-
-    async def add_to_chat_on_approved_request(self, user_request: OpenChatRequestJoin, chat_msgs):
-        new_data = OpenChatMsgDataSchema(
-            user_name=user_request.user_name,
-            chat_id=user_request.chat_id,
-            data=chat_msgs,
-            type="",
-            user_id=user_request.user_id
+        await self.broadcast_msg(user_request_conns, request_approved_data)
+        await self.add_to_chat_on_approved_request(
+            data.chat_id,
+            user_request_conns,
+            data.user_id,
+            data.user_name
         )
-        await self.manage_add_user_to_chat(new_data, existing_websockets=user_request.websockets)
+
+
+    async def add_to_chat_on_approved_request(
+            self, 
+            chat_id,
+            user_websockets: list[WebSocket],
+            user_id,
+            user_name
+    ):
+        new_data = OpenChatMsgDataSchema(
+            user_name=user_name,
+            chat_id=chat_id,
+            type="",
+            user_id=user_id,
+            data="",
+        )
+        await self.manage_add_user_to_chat(new_data, existing_websockets=user_websockets)
         
     
     async def manage_not_approved_user_request(
             self, 
             data: OpenChatMsgDataSchema,
             websocket: WebSocket
-    ):
-        user_request = self.get_user_request_or_none(self.user_requests, data)
+    ):  
+        is_admin = self.is_chat_admin(websocket, data.chat_id, data.owner_id)
+        if not is_admin:
+            await websocket.send_json({"type": open_chat_msg_type.not_allowed_user})
+            return
 
-        if not user_request:
+        chat_request_join = self.user_request_sockets.get(data.chat_id, {})
+        user_request_conns = chat_request_join.get(data.user_id)
+        if not user_request_conns:
             return
-        
-        self.user_requests.remove(user_request)
-        
-        if not user_request.websockets:
-            await websocket.send_json(
-                {
-                    "type": open_chat_msg_type.notification,
-                    "msg": f"User request rejected; but ${data.user_name} is not connected anymore",
-                    "chat_id": data.chat_id,
-                    "user_id": data.user_id
-                }
-            )
-            return
+                
+        del chat_request_join[data.user_id] 
+        self.user_request_sockets[data.chat_id] = chat_request_join
 
         request_not_approved_data = {
             "type": open_chat_msg_type.request_not_approved,
             "chat_id": data.chat_id,
         }
-        await self.broadcast_msg(user_request.websockets, request_not_approved_data)
+        await self.broadcast_msg(user_request_conns, request_not_approved_data)
 
 
     async def broadcast_msg_on_new_user_add(
@@ -248,12 +261,27 @@ class OpenChatManager(OpenChatUtils):
         self,
         data: OpenChatMsgDataSchema,
         websocket: WebSocket
-    ):
-        if (
-            chat_data := await self.get_chat_data_or_msg_error(data.chat_id, self.chats, websocket)
-        ) == None:
-            return
+    ):  
+        redis_c = get_redis_from_request(websocket)
+        chat_msgs = get_chat_msgs_from_redis_or_none(redis_c, data.chat_id)
+        user_exists = self.get_user_data_or_none(websocket, data.chat_id, data.user_id)
         
+        if not user_exists:
+            await websocket.send_json({"type": open_chat_msg_type.not_allowed_user})
+            return
+
+        # add msg to redis
+        msg_data = OpenChatMsg(
+            chat_id=data.chat_id,
+            send_at=datetime.datetime.now(datetime.timezone.utc).isoformat(),
+            sender_id=data.user_id,
+            sender_name=data.user_name,
+            msg=data.data
+        )
+        chat_msgs.append(msg_data.model_dump())
+        redis_c.hset(redis_key.chat_msgs, data.chat_id, stringify(chat_msgs))
+        
+        chat_conns = self.chat_user_sockets.get(data.chat_id, {})
         resp_data = OpenChatMsgDataSchema(
             chat_id=data.chat_id,
             data=data.data,
@@ -262,7 +290,7 @@ class OpenChatManager(OpenChatUtils):
             user_name=data.user_name
         ) 
         await self.broadcast_msg(
-            [websocket for chat_user in chat_data for websocket in chat_user.websockets if chat_user.user_id != data.user_id],
+            [websocket for user_id, user_conns in chat_conns.items() for websocket in user_conns if user_id != data.user_id],
             resp_data.model_dump(),
         )
 
@@ -290,10 +318,10 @@ class OpenChatManager(OpenChatUtils):
 
 
     def manage_socket_deletion(self, chat_id: str):
-        if self.chat_user_sockets.get(chat_id, None):
+        if self.chat_user_sockets.get(chat_id) != None:
             del self.chat_user_sockets[chat_id]
         
-        if self.user_request_sockets.get(chat_id, None):
+        if self.user_request_sockets.get(chat_id) != None:
             del self.user_request_sockets[chat_id]
     
 
@@ -357,7 +385,5 @@ class OpenChatManager(OpenChatUtils):
             except KeyError:
                 pass
            
-            
-
 
 open_chat_manager = OpenChatManager()

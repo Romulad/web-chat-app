@@ -19,3 +19,4 @@ class OpenChatMsg(BaseModel):
     sender_id: str
     sender_name: str
     chat_id: str
+    msg: str

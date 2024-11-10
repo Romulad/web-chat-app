@@ -61,19 +61,23 @@ class OpenChatUtils:
         return None
     
 
-    def get_user_request_or_none(
-        self, data: OpenChatMsgDataSchema, user_requests: list[dict]
-    ) -> dict | None:
-        request = None
-        for existing_request in user_requests:
-            parsed_data = OpenChatRequestJoin(**existing_request)
-            if (
-                parsed_data.user_id == data.user_id
-            ):
-                request = existing_request
-                break
+    def is_chat_admin(
+            self, 
+            webSocket: WebSocket, 
+            chat_id, 
+            admin_id
+    ):
+        chat_users = get_chat_users_from_redis_or_none(get_redis_from_request(webSocket), chat_id)
 
-        return request
+        if not chat_users:
+            return False
+
+        for chat_user in chat_users:
+            validated_data = OpenChatUser(**chat_user)
+            if validated_data.user_id == admin_id and validated_data.is_owner:
+                return True
+        
+        return False
 
 
     async def broadcast_msg(
