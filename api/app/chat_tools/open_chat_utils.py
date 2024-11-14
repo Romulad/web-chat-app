@@ -67,6 +67,7 @@ class OpenChatUtils:
             chat_id, 
             admin_id
     ):
+        """check if the user is the chat admin"""
         chat_users = get_chat_users_from_redis_or_none(get_redis_from_request(webSocket), chat_id)
 
         if not chat_users:

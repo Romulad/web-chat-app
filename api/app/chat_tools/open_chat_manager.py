@@ -1,6 +1,6 @@
 import datetime
 
-from fastapi import WebSocket, WebSocketDisconnect, status
+from fastapi import WebSocket
 
 from ..req_resp_models import OpenChatMsgDataSchema
 from ..utils.constants import open_chat_msg_type
@@ -50,6 +50,7 @@ class OpenChatManager(OpenChatUtils):
         redis_c = get_redis_from_request(websocket if websocket else existing_websockets[0])
         chat_data = get_chat_users_from_redis_or_none(redis_c, data.chat_id)
         
+        # check if user is a chat user first
         if(
             user_data := await self.get_user_data_or_msg_error(
                 chat_data, data.user_id, websocket
@@ -57,6 +58,7 @@ class OpenChatManager(OpenChatUtils):
         ) == None:
             return
         
+        # update active user chat connections
         chat_users_conn = self.chat_user_sockets.get(data.chat_id, {})
         user_conn = chat_users_conn.get(data.user_id, [])
         user_conn.extend(existing_websockets) if existing_websockets else user_conn.append(websocket)
@@ -114,6 +116,7 @@ class OpenChatManager(OpenChatUtils):
             if owner_connections:
                 owner_sockets.extend(owner_connections)
         
+        # notify user when chat admin is not connected to approve the request
         if not owner_sockets:
             data = {
                 'chat_id': data.chat_id, 
@@ -123,6 +126,7 @@ class OpenChatManager(OpenChatUtils):
             await websocket.send_json(data)
             return
 
+        # Update user request to join connection
         request_connections = self.user_request_sockets.get(data.chat_id, {})
         connections = request_connections.get(data.user_id, [])
         connections.append(websocket)
@@ -155,7 +159,8 @@ class OpenChatManager(OpenChatUtils):
     ):
         redis_c = get_redis_from_request(websocket)
         chat_users = get_chat_users_from_redis_or_none(redis_c, data.chat_id)
-
+        
+        # request should be approved only if it was initiate by an admin
         is_admin = self.is_chat_admin(websocket, data.chat_id, data.owner_id)
         if not is_admin:
             await websocket.send_json({"type": open_chat_msg_type.not_allowed_user})
@@ -173,7 +178,8 @@ class OpenChatManager(OpenChatUtils):
                 }
             )
             return
-    
+
+        # clean up request join connection for the user
         del chat_request_join[data.user_id] 
         self.user_request_sockets[data.chat_id] = chat_request_join
         
@@ -220,6 +226,7 @@ class OpenChatManager(OpenChatUtils):
             data: OpenChatMsgDataSchema,
             websocket: WebSocket
     ):  
+        # only the chat admin can declined a request to join
         is_admin = self.is_chat_admin(websocket, data.chat_id, data.owner_id)
         if not is_admin:
             await websocket.send_json({"type": open_chat_msg_type.not_allowed_user})
@@ -229,7 +236,8 @@ class OpenChatManager(OpenChatUtils):
         user_request_conns = chat_request_join.get(data.user_id)
         if not user_request_conns:
             return
-                
+
+        # clean up request to join connections   
         del chat_request_join[data.user_id] 
         self.user_request_sockets[data.chat_id] = chat_request_join
 
@@ -265,9 +273,15 @@ class OpenChatManager(OpenChatUtils):
         redis_c = get_redis_from_request(websocket)
         chat_msgs = get_chat_msgs_from_redis_or_none(redis_c, data.chat_id)
         user_exists = self.get_user_data_or_none(websocket, data.chat_id, data.user_id)
-        
+
+        # user should exist in the chat before sending a message
         if not user_exists:
             await websocket.send_json({"type": open_chat_msg_type.not_allowed_user})
+            return
+
+        # user can not send empty message
+        if not data.data:
+            await websocket.send_json({"msg": "No message"})
             return
 
         # add msg to redis
