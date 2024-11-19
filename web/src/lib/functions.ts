@@ -1,28 +1,36 @@
-import { openChatData, OpenChatMsg, openChatOneData, openChatRespDataScheme, openChatUser } from "./definitions";
+import { 
+    openChatData, 
+    OpenChatMsg, 
+    openChatOneData, 
+    openChatRespDataScheme, 
+    openChatUser 
+} from "./definitions";
 
 const alpha = "abcdefghijklmnopqrstuvwxyz";
 
-export function updateUseropenChatData(chatId: string, isOwner=true){
+export function updateUseropenChatData(
+    chatId: string, chatName: string, date: string, isOwner=true
+){
     const openChatData: openChatData = JSON.parse(
         localStorage.getItem('openChat') || "[]"
     );
-    openChatData.push({isOwner, chatId});
+    openChatData.push({isOwner, chatId, chatName, date});
     localStorage.setItem("openChat", JSON.stringify(openChatData));
     return chatId
 }
+
 export function getUseropenChatData() : openChatData {
     return JSON.parse(localStorage.getItem('openChat') || "[]")
 }
+
 export function getChatData(chatId: string) : openChatOneData | undefined {
     const openChatData: openChatData = JSON.parse(
         localStorage.getItem('openChat') || "[]"
     );
     const data = openChatData.find((data) => data.chatId === chatId);
-    if (data){
-        return data
-    }
     return data;
 }
+
 export function deleteUserOpenChat(chatId: string) {
     const openChatData: openChatData = JSON.parse(
         localStorage.getItem('openChat') || "[]"

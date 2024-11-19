@@ -4,6 +4,7 @@ import CenteredModalContainer from "./centeredModalContainer/index.tsx";
 import Button from "./button/index.tsx";
 import LocalMsgDisplay from "./localMsgDisplay/index.tsx";
 import RemoteMsgDisplay from "./remoteMsgDisplay/index.tsx";
+import OpenChatSideBar from "./openChatSideBar/openChatSideBar.tsx";
 
 export * from "./icons"
 export {
@@ -12,5 +13,6 @@ export {
     CenteredModalContainer,
     Button,
     LocalMsgDisplay,
-    RemoteMsgDisplay
+    RemoteMsgDisplay,
+    OpenChatSideBar
 }

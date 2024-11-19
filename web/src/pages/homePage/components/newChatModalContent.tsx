@@ -21,8 +21,14 @@ export default function NewChatModalContent(
     const userInfo = getUserOpenChatInfo();
     const [showLinkView, setShowLinkView] = useState(false);
     const [chatLink, setChatLink] = useState('');
-    const [ownerName, setOwnerName] = useState<string>(userInfo?.name || "");
-    const [inputError, setInputError] = useState<string>("");
+    const [reqData, setReqData] = useState({
+        ownerName: userInfo?.name || "",
+        chatName: "",
+    });
+    const [inputError, setInputError] = useState({
+        chatNameError: "",
+        ownerNameError: ""
+    });
     const [creatingChat, setCreatingChat] = useState(false);
 
     function toggleLinkView(){
@@ -32,36 +38,41 @@ export default function NewChatModalContent(
     function getUserChatIds(){
         return {
             chatId: generateChatId(),
-            initiatorId: userInfo ? userInfo.userId : generateUserId(ownerName)
+            initiatorId: userInfo ? userInfo.userId : generateUserId(reqData.ownerName)
         }
     }
 
     async function onGetLinkBtnClick(){
-        setInputError('');
+        setInputError({ownerNameError: "", chatNameError: ""});
         
-        if(!ownerName){
-            setInputError('Please enter a valid name')
+        if(!reqData.ownerName){
+            setInputError((errors)=>({...errors, ownerNameError: 'Please enter a valid name'}))
             return
         }
 
-        if(ownerName.length < 3){
-            setInputError('Minimum 3 characters')
+        if(reqData.ownerName.length < 3){
+            setInputError((errors)=>({...errors, ownerNameError: 'Minimum 3 characters'}))
             return
         }
 
-        const idsData = getUserChatIds();
-        if(ownerName !== userInfo?.name)
-            setUserOpenChatInfo({name: ownerName, userId: idsData.initiatorId});
+        if(reqData.chatName.length < 3){
+            setInputError((errors)=>({...errors, chatNameError: 'Minimum 3 characters'}))
+            return
+        }
+
+        const userChatIds = getUserChatIds();
+        if(reqData.ownerName !== userInfo?.name)
+            setUserOpenChatInfo({name: reqData.ownerName, userId: userChatIds.initiatorId});
 
         setCreatingChat(true);
         const {reqState, respData} = await createNewOpenChat(
-            idsData.chatId, idsData.initiatorId, ownerName
+            userChatIds.chatId, userChatIds.initiatorId, reqData.ownerName, reqData.chatName
         );
         setCreatingChat(false);
 
         if(reqState === defaultAppState.success){
-            updateUseropenChatData(respData?.chat_id);
-            setChatLink(getOpenChatPath(idsData.chatId));
+            updateUseropenChatData(respData?.chat_id, reqData.chatName, respData.initiation_date);
+            setChatLink(getOpenChatPath(userChatIds.chatId));
             toggleLinkView();
         }
     }
@@ -72,9 +83,18 @@ export default function NewChatModalContent(
         label="Your name:"
         name="name"
         placeholder="Enter your name"
-        inputError={inputError}
-        value={ownerName}
-        onChange={(ev)=>setOwnerName(ev.target.value)}/>
+        inputError={inputError.ownerNameError}
+        value={reqData.ownerName}
+        onChange={(ev)=> setReqData((data)=>({...data, ownerName: ev.target.value}))}/>
+
+        <LabelInput 
+        label="Give a name to your chat:"
+        name="chat-name"
+        placeholder="Chat name"
+        minLength={3}
+        inputError={inputError.chatNameError}
+        value={reqData.chatName}
+        onChange={(ev)=> setReqData((data)=>({...data, chatName: ev.target.value}))}/>
 
         <div className="flex justify-between mt-4 flex-wrap gap-3">
             <button className={classes.btn.outlined} onClick={toggleNewChatModal}>

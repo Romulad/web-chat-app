@@ -1,7 +1,12 @@
 import { useState } from "react";
 import { useParams } from "react-router-dom";
 
-import { generateUserId, getUserOpenChatInfo, setUserOpenChatInfo, validateNameInput } from "../../lib/functions";
+import { 
+    generateUserId, 
+    getUserOpenChatInfo, 
+    setUserOpenChatInfo, 
+    validateNameInput 
+} from "../../lib/functions";
 import { CenteredModalContainer, LabelInput } from "../../components";
 import classes from "../../lib/classes";
 import OpenChatConnectionManager from "./components/openChatConnectionManager";

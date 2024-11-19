@@ -13,7 +13,7 @@ createRoot(document.getElementById('root')!).render(
     <Suspense fallback={"Loading"}>
       <RouterProvider router={router}/>
       <ToastContainer 
-      position="top-right"/>
+      position="bottom-center"/>
     </Suspense>
   </StrictMode>,
 )

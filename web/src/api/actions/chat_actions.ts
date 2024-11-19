@@ -5,13 +5,14 @@ import { getCreateOpenChatRoute, getDeleteOpenChatRoute, getFindUserRoute } from
 
 
 export const createNewOpenChat = async (
-    chatId: string, initiatorId: string, initiatorName: string
+    chatId: string, initiatorId: string, initiatorName: string, chatName: string
 ): Promise<{reqState: string, respData: createOpenChatResp}> => {
 
     const reqData = {
         chat_id: chatId,
         initiator_id: initiatorId,
-        initiator_name: initiatorName
+        initiator_name: initiatorName,
+        chat_name: chatName
     }
 
     try{

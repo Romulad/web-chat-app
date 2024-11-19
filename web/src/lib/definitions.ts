@@ -18,11 +18,14 @@ export type openChatReqDataScheme = {
     chat_id: string;
     user_name: string;
     is_owner?: boolean;
+    owner_id?: string;
 }
 
 export type openChatOneData = {
     isOwner: boolean,
-    chatId: string
+    chatId: string,
+    chatName: string,
+    date: string
 }
 
 export type openChatData = openChatOneData[]

@@ -19,4 +19,5 @@ export const openChatConnectionMsgType = {
     user_disconnect: "user_disconnect" ,
     new_message: "new_message",
     chat_deleted: "chat_deleted",
+    not_allowed_user: "not_allowed_user",
 }
