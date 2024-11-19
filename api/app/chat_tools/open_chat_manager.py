@@ -49,6 +49,7 @@ class OpenChatManager(OpenChatUtils):
     ):
         redis_c = get_redis_from_request(websocket if websocket else existing_websockets[0])
         chat_data = get_chat_users_from_redis_or_none(redis_c, data.chat_id)
+        owner_data = get_owner_data_from_redis_or_none(redis_c, data.chat_id)
         
         # check if user is a chat user first
         if(
@@ -72,6 +73,8 @@ class OpenChatManager(OpenChatUtils):
         add_to_chat_data = {
             "type": open_chat_msg_type.added_to_open_chat,
             "chat_id": data.chat_id,
+            "chat_name": owner_data.get('chat_name', ""),
+            "created_at": owner_data.get('created_at', ""),
             "chat_users": chat_data,
             "connected_users": connected_user_ids,
             "chat_msgs": get_chat_msgs_from_redis_or_none(

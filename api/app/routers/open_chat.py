@@ -39,6 +39,9 @@ async def create_new_open_chat(
 
     chat_users = [user_data]
 
+    # add chat metadata to the owner data
+    user_data["chat_name"] = data.chat_name
+
     redis_c.hset(redis_key.chats, data.chat_id, stringify(chat_users))
     redis_c.hset(redis_key.chat_owners_ref, data.chat_id, stringify(user_data))
     redis_c.hset(redis_key.chat_msgs, data.chat_id, stringify([]))

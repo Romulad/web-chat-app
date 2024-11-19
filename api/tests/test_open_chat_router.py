@@ -24,11 +24,13 @@ class TestCreateNewOpenChatRoute:
                 "chat_id": "randomId",
                 "initiator_id": "superuserid",
                 "initiator_name": "My name",
+                "chat_name": "Group1"
             },
             {
                 "chat_id": "randomId2",
                 "initiator_id": "superuserid",
                 "initiator_name": "My name",
+                "chat_name": "Group2"
             }
         ]
         for chat_data in data:
@@ -50,6 +52,7 @@ class TestCreateNewOpenChatRoute:
         chat_one_owner = parse_json(chat_one_owner)
         assert chat_one[0]['is_owner'] == True
         assert chat_one_owner["name"] == "My name"
+        assert chat_one_owner["chat_name"] == "Group1"
 
         for chat_id in ["randomId", "randomId2"]:
             chat_msgs = parse_json(redis_c.hget(redis_key.chat_msgs, chat_id))
@@ -62,11 +65,13 @@ class TestCreateNewOpenChatRoute:
                 "chat_id": "randomId",
                 "initiator_id": "superuserid",
                 "initiator_name": "My name",
+                "chat_name": "Group1"
             },
             {
                 "chat_id": "randomId2",
                 "initiator_id": "superuserid",
                 "initiator_name": "My name",
+                "chat_name": "Group2"
             }
         ]
         for chat_data in data:
@@ -148,6 +153,8 @@ class TestOpenChatAddToChat(CommonTest, BaseOpenChatTestClasse):
             added_data = wb.receive_json()
             assert added_data.get('type') == open_chat_msg_type.added_to_open_chat
             assert added_data.get('chat_id')
+            assert added_data.get('chat_name')
+            assert added_data.get('created_at')
             assert len(added_data.get('chat_users')) == 1
             assert added_data.get('chat_users')[0]["user_id"] == owner_id
         
@@ -157,6 +164,8 @@ class TestOpenChatAddToChat(CommonTest, BaseOpenChatTestClasse):
                 added_data1 = wb1.receive_json()
                 assert added_data1.get('type') == open_chat_msg_type.added_to_open_chat
                 assert added_data1.get('chat_id')
+                assert added_data1.get('chat_name')
+                assert added_data1.get('created_at')
                 assert len(added_data1.get('chat_users')) == 1
                 assert added_data1.get('chat_users')[0]["user_id"] == owner_id
         

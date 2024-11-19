@@ -24,6 +24,7 @@ class BaseOpenChatTestClasse:
             initiation_date=datetime.datetime.now().isoformat(),
             initiator_id="owern-ownerid",
             initiator_name="owner",
+            chat_name="Group"
         ).model_dump()
         client.post(route, json=new_chat_data)
 
