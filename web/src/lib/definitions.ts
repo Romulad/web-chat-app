@@ -39,7 +39,10 @@ export type openChatRespDataScheme = {
     user_id?: string;
     chat_users?: Array<connectedOpenChatUserRespData>;
     owner_name?: string,
-    chat_msgs?: OpenChatMsg[]
+    chat_msgs?: OpenChatMsg[],
+    created_at?: string,
+    chat_name?: string,
+    connected_users?: string[]
 }
 
 export type connectedOpenChatUserRespData = {

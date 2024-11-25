@@ -13,7 +13,7 @@ export default function OpenChatConnectionManager(
     const notAllowedChatIds = getUserNotAllowedIds();
 
     return(
-        <div className="grid grid-cols-[250px_1fr] w-screen h-screen overflow-auto">
+        <div className="grid grid-cols-[300px_1fr] w-screen h-screen overflow-auto">
             <OpenChatSideBar 
             currentChatId={chatId}/>
 

@@ -12,7 +12,6 @@ import classes from "../../lib/classes";
 import OpenChatConnectionManager from "./components/openChatConnectionManager";
 
 
-
 export default function OpenChatChatPage(){
     const { chatId } = useParams();
     const userInfo = getUserOpenChatInfo();
@@ -34,9 +33,11 @@ export default function OpenChatChatPage(){
 
     return(
         userData ? (
+            <>
             <OpenChatConnectionManager 
             userData={userData}
             chatId={chatId || ""}/>
+            </>
         ) : (
             <CenteredModalContainer closeModal={()=>{}} showModal={true}>
                 <div className="bg-white p-4 rounded-lg ">

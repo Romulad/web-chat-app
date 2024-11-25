@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { motion } from "motion/react";
 
 import { Overlay } from "../../components";
 import classes from "../../lib/classes";
@@ -14,13 +15,20 @@ export default function HomePage(){
 
     return(
         <>
-        <div className="h-screen overflow-hidden flex items-center justify-center">
-            <div className="flex flex-wrap gap-3 justify-center">
-                <button
-                className={classes.btn.green} onClick={toggleNewChatModal}>
-                    Start a new chat
-                </button>
-            </div>
+        <div className="text-lg bg-gray-100 grid h-screen overflow-hidden items-center justify-center landing-page-bg">
+            <motion.button 
+            className={`${classes.btn.green} shadow-lg`}
+            onClick={toggleNewChatModal}
+            initial={{ y: 0 }}
+            animate={{ y: [0, -30, 0] }}
+            transition={{
+                duration: 2, 
+                repeat: Infinity, 
+                repeatType: "loop",
+                ease: "easeInOut"
+            }}>
+                Start a new chat
+            </motion.button>
         </div>
 
         <Overlay 

@@ -2,8 +2,8 @@ import React, { useEffect, useRef, useState } from "react";
 import { toast } from "react-toastify";
 
 import classes from "../../../lib/classes";
-import { connectedOpenChatUserRespData, OpenChatMsg, openChatReqDataScheme, openChatRespDataScheme } from "../../../lib/definitions";
-import { deleteUserOpenChat, getChatData, getOpenChatMsgs, getUserOpenChatInfo, parseSocketData, setLsOpenChatMsgs } from "../../../lib/functions";
+import { OpenChatMsg, openChatReqDataScheme, openChatRespDataScheme } from "../../../lib/definitions";
+import { deleteUserOpenChat, getChatData, getUserOpenChatInfo, parseSocketData } from "../../../lib/functions";
 import ConnectedUserModal from "./connectedUserModal";
 import { defaultAppState, openChatConnectionMsgType } from "../../../lib/constant";
 import UserRequestsModal from "./userRequestsModal";
@@ -13,37 +13,34 @@ import { useNavigate } from "react-router-dom";
 import { openChatHomePath } from "../../../lib/paths";
 
 
-
 export default function OpenChatInterface(
     {
-        chatUsers, 
+        fullChatData, 
         ws,
         chatId,
-        msgs
     } : {
-        chatUsers: Array<connectedOpenChatUserRespData>,
+        fullChatData: openChatRespDataScheme,
         ws: WebSocket | undefined,
         chatId: string,
-        msgs?: OpenChatMsg[]
     }
 ){
     const isChatOwner = getChatData(chatId)?.isOwner;
+    const userData = getUserOpenChatInfo();
     const navigate = useNavigate();
+
+    const [userRequests, setUserRequests] = useState<Array<openChatRespDataScheme>>([]);
+    const [innerChatUsers, setInnerChatUsers] = useState(fullChatData.chat_users);
+    const [activeUsersIds, setActiveUsersIds] = useState(fullChatData.connected_users);
+    const [openChatMsgs, setOpenChatMsgs] = useState(fullChatData.chat_msgs);
+
+    const [msg, setMsg] = useState('');
+    const [deletingChat, setDeletingChat] = useState(false);
+
     const [showUserListModal, setShowUserListModal] = useState(false);
     const [showUserRequestsModal, setShowUserRequestsModal] = useState(false);
     const [showDeleteChatModal, setShowDeleteChatModal] = useState(false);
-    const [userRequests, setUserRequests] = useState<Array<openChatRespDataScheme>>([]);
-    const userData = getUserOpenChatInfo();
-    const [innerChatUsers, setInnerChatUser] = useState<Array<connectedOpenChatUserRespData>>(chatUsers);
-    const [openChatMsgs, setOpenChatMsgs] = useState<Array<OpenChatMsg>>(
-        isChatOwner ? getOpenChatMsgs(chatId) : msgs && msgs.length ? msgs : []
-    );
-    const [msg, setMsg] = useState('');
-    const [deletingChat, setDeletingChat] = useState(false);
     const msgContainerRef = useRef<HTMLDivElement>(null);
-    const openChatMsgsRef = useRef<OpenChatMsg[]>(
-        isChatOwner ? getOpenChatMsgs(chatId) : []
-    );
+    const openChatMsgsRef = useRef(fullChatData.chat_msgs || []);
 
     useEffect(()=>{
         ws?.addEventListener('message', (ev)=>{
@@ -51,7 +48,7 @@ export default function OpenChatInterface(
             if(
                 data.type === openChatConnectionMsgType.request_join
             ){
-                setUserRequests((userRequests)=> [...userRequests, data]);
+                setUserRequests((userRequests) => [...userRequests, data]);
                 toast.info(`${data.user_name} is asking to join the chat`);
             }
             
@@ -60,7 +57,8 @@ export default function OpenChatInterface(
             ){
                 if(data.chat_users){
                     toast.info(`${data.user_name} join the chat`);
-                    setInnerChatUser(data.chat_users);
+                    setInnerChatUsers(data.chat_users);
+                    setActiveUsersIds(data.connected_users)
                 }
             }
             
@@ -68,36 +66,42 @@ export default function OpenChatInterface(
                 data?.type === openChatConnectionMsgType.user_disconnect
             ){
                 toast.info(`${data.user_name} leave the chat`);
-                setInnerChatUser(innerChatUsers.filter((user)=> user.user_id !== data.user_id));
+                // update chat users
+                setInnerChatUsers(
+                    innerChatUsers?.filter((user)=> user.user_id !== data.user_id)
+                );
+                // update connected user ids
+                if(data.user_id && activeUsersIds?.includes(data.user_id)){
+                    setActiveUsersIds(
+                        activeUsersIds?.filter((userId)=> userId !== data.user_id)
+                    );
+                }
             }
             
             else if(
                 data?.type === openChatConnectionMsgType.new_message
             ){
-                const msgData : OpenChatMsg = {
-                    name: data.user_name || "",
-                    text: typeof data.data === "string" && data.data || "",
-                    userId: data.user_id || "",
+                if(data.user_name && data.data && data.user_id){
+                    const msgData : OpenChatMsg = {
+                        name: data.user_name,
+                        text: typeof data.data === "string" && data.data || "",
+                        userId: data.user_id,
+                    }
+                    setOpenChatMsgs((msgs) => [...(msgs || []), msgData]);
+                    showContainerLastMsg();
+                    openChatMsgsRef.current = [...openChatMsgsRef.current, msgData];
                 }
-                setOpenChatMsgs((msgs)=> [...msgs, msgData]);
-                showContainerLastMsg();
-
-                if(isChatOwner){
-                    setLsOpenChatMsgs(chatId, [...openChatMsgsRef.current, msgData]);
-                }
-                openChatMsgsRef.current = [...openChatMsgsRef.current, msgData];
             }
             
             else if(
                 data?.type === openChatConnectionMsgType.chat_deleted
             ){
-                toast.info(`Chat have been deleted`);
+                if(!isChatOwner) toast.info(`Chat have been deleted`);
                 setTimeout(() => {
                     performAfterChatDeletion()
                 }, 1000);
             }
         })
-
     }, [])
 
 
@@ -114,7 +118,7 @@ export default function OpenChatInterface(
     }
 
     function isAdmin(userId: string){
-        const chatUser = innerChatUsers.find((chatUser)=> chatUser.user_id === userId);
+        const chatUser = innerChatUsers?.find((chatUser)=> chatUser.user_id === userId);
         return chatUser?.is_owner
     }
 
@@ -138,11 +142,7 @@ export default function OpenChatInterface(
             text: msg,
             userId: userData?.userId || ""
         }
-        setOpenChatMsgs([...openChatMsgs, newMsg]);
-
-        if(isChatOwner){
-            setLsOpenChatMsgs(chatId, [...openChatMsgsRef.current, newMsg]);
-        }
+        setOpenChatMsgs([...(openChatMsgs || []), newMsg]);
         openChatMsgsRef.current = [...openChatMsgsRef.current, newMsg];
     }
 
@@ -165,7 +165,7 @@ export default function OpenChatInterface(
 
     function deleteChat(){
         setDeletingChat(true);
-        deleteOpenChat(chatId)
+        deleteOpenChat(chatId, userData?.userId || "")
         .then((resp)=>{
             setDeletingChat(false);
             const {reqState} = resp;
@@ -186,7 +186,7 @@ export default function OpenChatInterface(
                         {chatId}
                     </p>
                     <p className="text-start text-sm text-gray-600">
-                        <b>connected users:</b> {innerChatUsers.length}
+                        <b>connected users:</b> {activeUsersIds?.length || 0}
                     </p>
                 </button>
 
@@ -237,7 +237,7 @@ export default function OpenChatInterface(
         </div>
         
         <ConnectedUserModal 
-        chatUsers={innerChatUsers}
+        chatUsers={innerChatUsers || []}
         showUserListModal={showUserListModal}
         toggleUserListModal={toggleUserListModal}/>
 

@@ -2,7 +2,13 @@ import { useState } from "react";
 
 import { useWebSocket } from "../../../hooks";
 import { openChatConnectionMsgType } from "../../../lib/constant";
-import { connectedOpenChatUserRespData, openChatOneData, openChatReqDataScheme, openChatRespDataScheme, openChatUser } from "../../../lib/definitions";
+import { 
+    connectedOpenChatUserRespData, 
+    openChatOneData, 
+    openChatReqDataScheme, 
+    openChatRespDataScheme, 
+    openChatUser 
+} from "../../../lib/definitions";
 import { getOpenChatSocketRoute } from "../../../lib/socketRoutes";
 import OpenChatInterface from "./openChatInterface";
 
@@ -13,12 +19,13 @@ export default function ManageAddUserToChat(
         userData
     } : {chatData: openChatOneData, userData: openChatUser}
 ){
+    const socketUrl =  getOpenChatSocketRoute(chatData.chatId, userData.userId);
     const {ws, isInAction, setIsInAction, initializing} = useWebSocket(
-        getOpenChatSocketRoute(), onOpen, onMessage
+        socketUrl, onOpen, onMessage
     );
     const [webSocketResp, setWebSocketResp] = useState<openChatRespDataScheme>();
     const [displayingMsg, setDisplayingMsg] = useState("");
-    const [chatUsers, setChatUsers] = useState<Array<connectedOpenChatUserRespData>>();
+    const [fullChatData, setFullChatData] = useState<openChatRespDataScheme>();
 
     function onOpen(_: Event, ws?: WebSocket){
         const data : openChatReqDataScheme = {
@@ -40,7 +47,7 @@ export default function ManageAddUserToChat(
             data?.type === openChatConnectionMsgType.added_to_open_chat
         ){
             if(data.chat_users){
-                setChatUsers(data.chat_users);
+                setFullChatData(data);
             }
         }else{
             setWebSocketResp(data);
@@ -48,9 +55,9 @@ export default function ManageAddUserToChat(
     }
 
     return(
-        chatUsers ?
+        fullChatData ?
         <OpenChatInterface 
-        chatUsers={chatUsers}
+        fullChatData={fullChatData}
         chatId={chatData.chatId}
         ws={ws} /> :
         
@@ -68,7 +75,8 @@ export default function ManageAddUserToChat(
                     </p>
                 ) :
 
-                webSocketResp?.type === openChatConnectionMsgType.error ? (
+                webSocketResp?.type === openChatConnectionMsgType.error ||
+                webSocketResp?.type === openChatConnectionMsgType.not_allowed_user ? (
                     <p>{webSocketResp.msg}</p>
                 ) :
 

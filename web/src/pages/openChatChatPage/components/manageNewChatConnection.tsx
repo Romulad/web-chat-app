@@ -1,11 +1,12 @@
-import { useEffect, useRef, useState } from "react"
+import { useState } from "react"
 
-import { connectedOpenChatUserRespData, OpenChatMsg, openChatReqDataScheme, openChatRespDataScheme, openChatUser } from "../../../lib/definitions"
+import { openChatReqDataScheme, openChatRespDataScheme, openChatUser } from "../../../lib/definitions"
 import { openChatConnectionMsgType } from "../../../lib/constant"
 import { getOpenChatSocketRoute } from "../../../lib/socketRoutes"
-import { parseSocketData, updateUserNotAllowedChatIds, updateUseropenChatData } from "../../../lib/functions"
+import { updateUserNotAllowedChatIds, updateUseropenChatData } from "../../../lib/functions"
 import classes from "../../../lib/classes"
 import OpenChatInterface from "./openChatInterface"
+import { useWebSocket } from "../../../hooks"
 
 
 type ManageNewChatConectionProps = {
@@ -16,49 +17,13 @@ type ManageNewChatConectionProps = {
 export default function ManageNewChatConection(
     {userData, chatId} : ManageNewChatConectionProps
 ){
+    const socketUrl = getOpenChatSocketRoute(chatId, userData.userId);
+    const { ws, isInAction } = useWebSocket(socketUrl, onOnpen, onMessage);
     const [displayingMsg, setDisplayingMsg] = useState('Attempting connection...');
-    const [isInAction, setIsInAction] = useState(true);
     const [socketResp, setSocketResp] = useState<openChatRespDataScheme>();
-    const ws = useRef<WebSocket>();
-    const [chatUsers, setChatUsers] = useState<Array<connectedOpenChatUserRespData>>();
-    const [chatMsgs, setChatMsgs] = useState<OpenChatMsg[]>([]);
+    const [fullChatData, setFullChatData] = useState<openChatRespDataScheme>();
 
-    useEffect(()=>{
-        const websocket = new WebSocket(getOpenChatSocketRoute());
-
-        websocket.addEventListener('open', (_)=>{
-            ws.current = websocket;
-            sendAskToJoinReq();
-        })
-
-        websocket.addEventListener('message', (ev)=>{
-            console.log("got message")
-            const respData = parseSocketData(ev.data);
-            setIsInAction(false);
-            setSocketResp(respData);
-
-            if (
-                respData?.type === openChatConnectionMsgType.added_to_open_chat
-            ){
-                if(respData.chat_users){
-                    setChatUsers(respData.chat_users);
-                    respData.chat_msgs && setChatMsgs(respData.chat_msgs);
-                }
-            }else if (
-                respData?.type === openChatConnectionMsgType.request_approved
-            ){
-                updateUseropenChatData(chatId, false);
-            }else if (
-                respData?.type === openChatConnectionMsgType.request_not_approved
-            ){
-                updateUserNotAllowedChatIds(chatId)
-            }
-        })
-
-        return () => { websocket.close() }
-    }, [])
-
-    function sendAskToJoinReq(){
+    function sendAskToJoinReq(ws?: WebSocket){
         const data : openChatReqDataScheme = {
             chat_id: chatId, 
             data: "", 
@@ -67,18 +32,39 @@ export default function ManageNewChatConection(
             user_name: userData.name,
             is_owner: false
         }
-        ws.current?.send(JSON.stringify(data));
+        ws?.send(JSON.stringify(data));
         setDisplayingMsg('Asking to join...');
-        setIsInAction(true);
+    }
+
+    function onOnpen(_: Event, ws?: WebSocket){
+        sendAskToJoinReq(ws)
+    }
+
+    function onMessage(respData: openChatRespDataScheme){
+        setSocketResp(respData);
+
+        if (
+            respData?.type === openChatConnectionMsgType.added_to_open_chat
+        ){
+            if(respData.chat_users){
+                setFullChatData(respData);
+                updateUseropenChatData(
+                    chatId, respData.chat_name || "", respData.created_at || "", false 
+                )
+            }
+        }else if (
+            respData?.type === openChatConnectionMsgType.request_not_approved
+        ){
+            updateUserNotAllowedChatIds(chatId)
+        }
     }
 
     return(
-        chatUsers ?
+        fullChatData ?
         <OpenChatInterface 
         chatId={chatId}
-        chatUsers={chatUsers}
-        ws={ws.current}
-        msgs={chatMsgs}/> :
+        fullChatData={fullChatData}
+        ws={ws}/> :
 
         <div className="h-screen flex items-center justify-center text-center">
             {
@@ -100,7 +86,7 @@ export default function ManageNewChatConection(
                         </div>
                         
                         <button className={classes.btn.blue}
-                        onClick={sendAskToJoinReq}>
+                        onClick={()=>{sendAskToJoinReq(ws)}}>
                             Ask to join
                         </button>
                     </div>
@@ -115,7 +101,7 @@ export default function ManageNewChatConection(
 
                 socketResp?.type === openChatConnectionMsgType.request_approved ? (
                     <div>
-                        <p>
+                        <p className="text-green-500">
                             Your request to join {socketResp.chat_id} 
                             have been approved by an admin
                         </p>
@@ -124,7 +110,7 @@ export default function ManageNewChatConection(
 
                 socketResp?.type === openChatConnectionMsgType.request_not_approved ? (
                     <div>
-                        <p>
+                        <p className="text-red-500">
                             Your request to join {socketResp.chat_id} 
                             have been rejected by an admin
                         </p>

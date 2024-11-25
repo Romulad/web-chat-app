@@ -25,10 +25,10 @@ export const createNewOpenChat = async (
 }
 
 export const deleteOpenChat = async (
-    chatId: string
+    chatId: string, userId: string
 ): Promise<{reqState: string, respData: boolean | null}> => {
     try{
-        await request.delete(getDeleteOpenChatRoute(chatId));
+        await request.delete(getDeleteOpenChatRoute(chatId, userId));
         return {reqState: defaultAppState.success, respData: true}
     }catch(error:any){
         console.log(error?.response?.data || error?.request || error?.message)

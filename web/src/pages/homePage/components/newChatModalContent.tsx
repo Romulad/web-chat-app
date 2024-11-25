@@ -88,7 +88,7 @@ export default function NewChatModalContent(
         onChange={(ev)=> setReqData((data)=>({...data, ownerName: ev.target.value}))}/>
 
         <LabelInput 
-        label="Give a name to your chat:"
+        label="A descriptive chat name:"
         name="chat-name"
         placeholder="Chat name"
         minLength={3}
