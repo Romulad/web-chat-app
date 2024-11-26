@@ -17,3 +17,4 @@ class OpenChatMsgDataSchema(BaseModel):
     user_name: str
     is_owner: bool = False
     owner_id: str = ""
+    send_at: str = ""

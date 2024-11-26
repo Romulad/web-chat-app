@@ -288,9 +288,10 @@ class OpenChatManager(OpenChatUtils):
             return
 
         # add msg to redis
+        msg_date = datetime.datetime.now(datetime.timezone.utc).isoformat()
         msg_data = OpenChatMsg(
             chat_id=data.chat_id,
-            send_at=datetime.datetime.now(datetime.timezone.utc).isoformat(),
+            send_at=msg_date,
             sender_id=data.user_id,
             sender_name=data.user_name,
             msg=data.data
@@ -304,7 +305,8 @@ class OpenChatManager(OpenChatUtils):
             data=data.data,
             type=open_chat_msg_type.new_message,
             user_id=data.user_id,
-            user_name=data.user_name
+            user_name=data.user_name,
+            send_at=msg_date
         ) 
         await self.broadcast_msg(
             [websocket for user_id, user_conns in chat_conns.items() for websocket in user_conns if user_id != data.user_id],
