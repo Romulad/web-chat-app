@@ -3,7 +3,6 @@ import { useState } from "react";
 import { useWebSocket } from "../../../hooks";
 import { openChatConnectionMsgType } from "../../../lib/constant";
 import { 
-    connectedOpenChatUserRespData, 
     openChatOneData, 
     openChatReqDataScheme, 
     openChatRespDataScheme, 
@@ -55,7 +54,7 @@ export default function ManageAddUserToChat(
     }
 
     return(
-        fullChatData ?
+        !initializing && fullChatData ?
         <OpenChatInterface 
         fullChatData={fullChatData}
         chatId={chatData.chatId}

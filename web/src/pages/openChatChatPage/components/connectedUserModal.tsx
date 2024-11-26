@@ -8,10 +8,12 @@ export default function ConnectedUserModal(
         toggleUserListModal,
         showUserListModal,
         chatUsers,
+        connectedIds
     } : {
         toggleUserListModal: () => void;
         showUserListModal: boolean;
         chatUsers: Array<connectedOpenChatUserRespData>,
+        connectedIds: string[]
     }
 ){
     return(
@@ -20,7 +22,7 @@ export default function ConnectedUserModal(
         showModal={showUserListModal}>
             <div className="bg-white rounded-lg ">
                 <h2 className="p-4">
-                    {chatUsers.length > 1 ? "Connected users" : "Connected user"}
+                    {chatUsers.length > 1 ? "Users" : "User"}
                 </h2>
 
                 <ul className="max-h-[60vh] overflow-auto divide-y-2">
@@ -31,18 +33,19 @@ export default function ConnectedUserModal(
                                 <div className="border px-4 py-2 rounded-full">
                                     {chatuser.name.charAt(0).toUpperCase()}
                                 </div>
-                                <div>
-                                    <p className="flex gap-3 items-center">
-                                        <span>
-                                            {chatuser.name}
-                                        </span>
+                                <div className="flex flex-col gap-2">
+                                    <p className="">
+                                        {chatuser.name}
+                                    </p>
+                                    <span className="flex gap-2 items-center">
                                         {chatuser.is_owner &&
-                                        <span className="bg-green-300 rounded-full px-2 text-white text-xs">
+                                        <span className="bg-black rounded-full px-2 text-white text-xs">
                                             Admin
                                         </span>}
-                                    </p>
-                                    <span className="text-sm text-gray-600">
-                                        {chatuser.user_id}
+                                        {connectedIds?.includes(chatuser.user_id) &&
+                                        <span className="bg-green-300 rounded-full px-2 text-black text-xs">
+                                            Connected
+                                        </span>}
                                     </span>
                                 </div>
                             </div>

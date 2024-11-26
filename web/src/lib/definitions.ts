@@ -42,7 +42,8 @@ export type openChatRespDataScheme = {
     chat_msgs?: OpenChatMsg[],
     created_at?: string,
     chat_name?: string,
-    connected_users?: string[]
+    connected_users?: string[],
+    send_at?: string
 }
 
 export type connectedOpenChatUserRespData = {
@@ -53,9 +54,11 @@ export type connectedOpenChatUserRespData = {
 }
 
 export type OpenChatMsg = {
-    text: string,
-    name: string,
-    userId: string
+    chat_id: string;
+    msg: string;
+    send_at: string;
+    sender_id: string
+    sender_name: string
 }
 
 export type UserTokenResp = {

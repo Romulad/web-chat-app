@@ -13,6 +13,11 @@ export function updateUseropenChatData(
     const openChatData: openChatData = JSON.parse(
         localStorage.getItem('openChat') || "[]"
     );
+
+    if(openChatData.find((data)=> data.chatId === chatId)){
+        return chatId
+    }
+    
     openChatData.push({isOwner, chatId, chatName, date});
     localStorage.setItem("openChat", JSON.stringify(openChatData));
     return chatId

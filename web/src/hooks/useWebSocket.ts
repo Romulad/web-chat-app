@@ -13,6 +13,7 @@ export default function useWebSocket(
     const [initializing, setInitializing] = useState(false);
     const ws = useRef<WebSocket>();
     const retryCount = useRef(0);
+    const currentTimeOut = useRef<number>();
     
     useEffect(()=>{
        function establishConnection(){
@@ -50,9 +51,11 @@ export default function useWebSocket(
             setInitializing(false);
             setIsInAction(false);
             if(retryCount.current <= 10){
-                setTimeout(() => {
-                    toast.error('Attempting connection again...');
-                    establishConnection();
+                currentTimeOut.current = setTimeout(() => {
+                    if(!ws){
+                        toast.info('Attempting connection again...');
+                        establishConnection();
+                    }
                 }, (retryCount.current + 1) * 5000); 
             }
             retryCount.current++;
@@ -61,7 +64,7 @@ export default function useWebSocket(
 
        establishConnection()
 
-        return () => { ws.current?.close() }
+        return () => { ws.current?.close(), clearTimeout(currentTimeOut.current) }
     }, [url])
 
     return {

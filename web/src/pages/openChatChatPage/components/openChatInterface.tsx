@@ -2,8 +2,17 @@ import React, { useEffect, useRef, useState } from "react";
 import { toast } from "react-toastify";
 
 import classes from "../../../lib/classes";
-import { OpenChatMsg, openChatReqDataScheme, openChatRespDataScheme } from "../../../lib/definitions";
-import { deleteUserOpenChat, getChatData, getUserOpenChatInfo, parseSocketData } from "../../../lib/functions";
+import { 
+    OpenChatMsg, 
+    openChatReqDataScheme, 
+    openChatRespDataScheme 
+} from "../../../lib/definitions";
+import { 
+    deleteUserOpenChat, 
+    getChatData, 
+    getUserOpenChatInfo, 
+    parseSocketData 
+} from "../../../lib/functions";
 import ConnectedUserModal from "./connectedUserModal";
 import { defaultAppState, openChatConnectionMsgType } from "../../../lib/constant";
 import UserRequestsModal from "./userRequestsModal";
@@ -31,7 +40,7 @@ export default function OpenChatInterface(
     const [userRequests, setUserRequests] = useState<Array<openChatRespDataScheme>>([]);
     const [innerChatUsers, setInnerChatUsers] = useState(fullChatData.chat_users);
     const [activeUsersIds, setActiveUsersIds] = useState(fullChatData.connected_users);
-    const [openChatMsgs, setOpenChatMsgs] = useState(fullChatData.chat_msgs);
+    const [openChatMsgs, setOpenChatMsgs] = useState(fullChatData.chat_msgs || []);
 
     const [msg, setMsg] = useState('');
     const [deletingChat, setDeletingChat] = useState(false);
@@ -40,7 +49,6 @@ export default function OpenChatInterface(
     const [showUserRequestsModal, setShowUserRequestsModal] = useState(false);
     const [showDeleteChatModal, setShowDeleteChatModal] = useState(false);
     const msgContainerRef = useRef<HTMLDivElement>(null);
-    const openChatMsgsRef = useRef(fullChatData.chat_msgs || []);
 
     useEffect(()=>{
         ws?.addEventListener('message', (ev)=>{
@@ -48,7 +56,14 @@ export default function OpenChatInterface(
             if(
                 data.type === openChatConnectionMsgType.request_join
             ){
-                setUserRequests((userRequests) => [...userRequests, data]);
+                setUserRequests((userRequests) => {
+                    const existed = userRequests.find((request)=> request.user_id === data.user_id)
+                    if(existed){
+                        return userRequests
+                    }else{
+                        return [...userRequests, data]
+                    }
+                });
                 toast.info(`${data.user_name} is asking to join the chat`);
             }
             
@@ -66,10 +81,6 @@ export default function OpenChatInterface(
                 data?.type === openChatConnectionMsgType.user_disconnect
             ){
                 toast.info(`${data.user_name} leave the chat`);
-                // update chat users
-                setInnerChatUsers(
-                    innerChatUsers?.filter((user)=> user.user_id !== data.user_id)
-                );
                 // update connected user ids
                 if(data.user_id && activeUsersIds?.includes(data.user_id)){
                     setActiveUsersIds(
@@ -81,15 +92,16 @@ export default function OpenChatInterface(
             else if(
                 data?.type === openChatConnectionMsgType.new_message
             ){
-                if(data.user_name && data.data && data.user_id){
+                if(data.user_name && data.data && data.user_id && data.send_at){
                     const msgData : OpenChatMsg = {
-                        name: data.user_name,
-                        text: typeof data.data === "string" && data.data || "",
-                        userId: data.user_id,
+                        sender_name: data.user_name,
+                        msg: typeof data.data === "string" && data.data || "",
+                        sender_id: data.user_id,
+                        chat_id: data.chat_id,
+                        send_at: data.send_at
                     }
-                    setOpenChatMsgs((msgs) => [...(msgs || []), msgData]);
+                    setOpenChatMsgs((messages) => [...messages, msgData]);
                     showContainerLastMsg();
-                    openChatMsgsRef.current = [...openChatMsgsRef.current, msgData];
                 }
             }
             
@@ -137,13 +149,15 @@ export default function OpenChatInterface(
         }
         ws?.send(JSON.stringify(msgData));
 
+        const date = new Date()
         const newMsg : OpenChatMsg = {
-            name: userData?.name || "", 
-            text: msg,
-            userId: userData?.userId || ""
+            sender_name: userData?.name || "",
+            msg: msg,
+            sender_id: userData?.userId || "",
+            chat_id: chatId,
+            send_at: date.toUTCString()
         }
         setOpenChatMsgs([...(openChatMsgs || []), newMsg]);
-        openChatMsgsRef.current = [...openChatMsgsRef.current, newMsg];
     }
 
     function showContainerLastMsg(){
@@ -178,8 +192,8 @@ export default function OpenChatInterface(
 
     return(
         <>
-        <div className="max-w-[900px] min-[910px]:mx-auto mx-3 pt-5 flex flex-col gap-5 h-screen">
-            <div className="flex justify-between items-center px-4 py-3 bg-slate-50 shadow-lg rounded-lg ">
+        <div className="flex flex-col gap-5 h-screen">
+            <div className="flex justify-between items-center px-4 py-3 shadow ">
                 <button className=" flex flex-col"
                 onClick={toggleUserListModal}>
                     <p className="sm:text-lg">
@@ -209,15 +223,17 @@ export default function OpenChatInterface(
             <div className="grow flex flex-col justify-between overflow-auto gap-3 pb-4 px-3">
                 <div className="grow overflow-y-auto overflow-x-hidden flex flex-col gap-2 pe-3"
                 ref={msgContainerRef}>
-                    {openChatMsgs?.map((openChatMsg)=>{
-                        return userData?.userId === openChatMsg.userId ? (
+                    {openChatMsgs?.map((openChatMsg, index)=>{
+                        return userData?.userId === openChatMsg.sender_id ? (
                             <LocalMsgDisplay 
-                            msg={openChatMsg.text}
-                            name={openChatMsg.name}/>
+                            key={`${index}-${openChatMsg.sender_id}`}
+                            msg={openChatMsg.msg}
+                            name={openChatMsg.sender_name}/>
                         ) : (
                             <RemoteMsgDisplay 
-                            msg={openChatMsg.text}
-                            name={openChatMsg.name}
+                            key={`${index}-${openChatMsg.sender_id}`}
+                            msg={openChatMsg.msg}
+                            name={openChatMsg.sender_name}
                             /> 
                         )
                     })}
@@ -238,6 +254,7 @@ export default function OpenChatInterface(
         
         <ConnectedUserModal 
         chatUsers={innerChatUsers || []}
+        connectedIds={activeUsersIds || []}
         showUserListModal={showUserListModal}
         toggleUserListModal={toggleUserListModal}/>
 

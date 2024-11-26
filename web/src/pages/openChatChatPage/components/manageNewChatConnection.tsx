@@ -18,7 +18,7 @@ export default function ManageNewChatConection(
     {userData, chatId} : ManageNewChatConectionProps
 ){
     const socketUrl = getOpenChatSocketRoute(chatId, userData.userId);
-    const { ws, isInAction } = useWebSocket(socketUrl, onOnpen, onMessage);
+    const { ws, isInAction, initializing } = useWebSocket(socketUrl, onOnpen, onMessage);
     const [displayingMsg, setDisplayingMsg] = useState('Attempting connection...');
     const [socketResp, setSocketResp] = useState<openChatRespDataScheme>();
     const [fullChatData, setFullChatData] = useState<openChatRespDataScheme>();
@@ -60,7 +60,7 @@ export default function ManageNewChatConection(
     }
 
     return(
-        fullChatData ?
+        !initializing && fullChatData ?
         <OpenChatInterface 
         chatId={chatId}
         fullChatData={fullChatData}
@@ -68,6 +68,12 @@ export default function ManageNewChatConection(
 
         <div className="h-screen flex items-center justify-center text-center">
             {
+                initializing ? (
+                    <p className={"animate-pulse"}>
+                        Attempting connection
+                    </p>
+                ) :
+                
                 isInAction ? (
                     <p className={"animate-pulse"}>
                         {displayingMsg}
@@ -101,7 +107,7 @@ export default function ManageNewChatConection(
 
                 socketResp?.type === openChatConnectionMsgType.request_approved ? (
                     <div>
-                        <p className="text-green-500">
+                        <p className="text-green-500 mx-3">
                             Your request to join {socketResp.chat_id} 
                             have been approved by an admin
                         </p>
@@ -110,7 +116,7 @@ export default function ManageNewChatConection(
 
                 socketResp?.type === openChatConnectionMsgType.request_not_approved ? (
                     <div>
-                        <p className="text-red-500">
+                        <p className="text-red-500 mx-3">
                             Your request to join {socketResp.chat_id} 
                             have been rejected by an admin
                         </p>
