@@ -3,30 +3,33 @@ import { useState } from "react";
 import { useWebSocket } from "../../../hooks";
 import { openChatConnectionMsgType } from "../../../lib/constant";
 import { 
-    openChatOneData, 
     openChatReqDataScheme, 
     openChatRespDataScheme, 
-    openChatUser 
 } from "../../../lib/definitions";
 import { getOpenChatSocketRoute } from "../../../lib/socketRoutes";
 import OpenChatInterface from "./openChatInterface";
+import { getChatData, getUserOpenChatInfo } from "../../../lib/functions";
+import { useChatDataContextValue } from "../../../context/chatDataContext";
 
 
-export default function ManageAddUserToChat(
-    {
-        chatData, 
-        userData
-    } : {chatData: openChatOneData, userData: openChatUser}
-){
-    const socketUrl =  getOpenChatSocketRoute(chatData.chatId, userData.userId);
+export default function ManageAddUserToChat(){
+    const { chatId, fullChatData, setFullChatData } = useChatDataContextValue();
+
+    const chatData = getChatData(chatId);
+    const userData = getUserOpenChatInfo();
+
+    const socketUrl =  getOpenChatSocketRoute(chatId, userData?.userId || "");
     const {ws, isInAction, setIsInAction, initializing} = useWebSocket(
         socketUrl, onOpen, onMessage
     );
     const [webSocketResp, setWebSocketResp] = useState<openChatRespDataScheme>();
     const [displayingMsg, setDisplayingMsg] = useState("");
-    const [fullChatData, setFullChatData] = useState<openChatRespDataScheme>();
 
     function onOpen(_: Event, ws?: WebSocket){
+        if(!chatData || !userData ){
+            return
+        }
+
         const data : openChatReqDataScheme = {
             chat_id: chatData.chatId,
             data: "",
@@ -38,7 +41,7 @@ export default function ManageAddUserToChat(
         if(ws)
             ws.send(JSON.stringify(data));
             setIsInAction(true);
-            setDisplayingMsg('Connecting to chat...');
+            setDisplayingMsg(`Connecting to chat ${chatData.chatName}...`);
     }
 
     function onMessage(data: openChatRespDataScheme){
@@ -55,10 +58,7 @@ export default function ManageAddUserToChat(
 
     return(
         !initializing && fullChatData ?
-        <OpenChatInterface 
-        fullChatData={fullChatData}
-        chatId={chatData.chatId}
-        ws={ws} /> :
+        <OpenChatInterface ws={ws} /> :
         
         <div className="h-screen flex items-center justify-center text-center">
             {

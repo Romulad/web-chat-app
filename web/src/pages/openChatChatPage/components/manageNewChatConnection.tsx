@@ -1,29 +1,29 @@
 import { useState } from "react"
 
-import { openChatReqDataScheme, openChatRespDataScheme, openChatUser } from "../../../lib/definitions"
+import { openChatReqDataScheme, openChatRespDataScheme } from "../../../lib/definitions"
 import { openChatConnectionMsgType } from "../../../lib/constant"
 import { getOpenChatSocketRoute } from "../../../lib/socketRoutes"
-import { updateUserNotAllowedChatIds, updateUseropenChatData } from "../../../lib/functions"
+import { getUserOpenChatInfo, updateUserNotAllowedChatIds, updateUseropenChatData } from "../../../lib/functions"
 import classes from "../../../lib/classes"
 import OpenChatInterface from "./openChatInterface"
 import { useWebSocket } from "../../../hooks"
+import { useChatDataContextValue } from "../../../context/chatDataContext"
 
 
-type ManageNewChatConectionProps = {
-    userData: openChatUser,
-    chatId: string,
-}
-
-export default function ManageNewChatConection(
-    {userData, chatId} : ManageNewChatConectionProps
-){
-    const socketUrl = getOpenChatSocketRoute(chatId, userData.userId);
+export default function ManageNewChatConection(){
+    const { chatId, fullChatData, setFullChatData } = useChatDataContextValue();
+    const userData = getUserOpenChatInfo();
+    const socketUrl = getOpenChatSocketRoute(chatId, userData?.userId || "");
     const { ws, isInAction, initializing } = useWebSocket(socketUrl, onOnpen, onMessage);
+    
     const [displayingMsg, setDisplayingMsg] = useState('Attempting connection...');
     const [socketResp, setSocketResp] = useState<openChatRespDataScheme>();
-    const [fullChatData, setFullChatData] = useState<openChatRespDataScheme>();
 
     function sendAskToJoinReq(ws?: WebSocket){
+        if(!userData){
+            return
+        }
+
         const data : openChatReqDataScheme = {
             chat_id: chatId, 
             data: "", 
@@ -61,10 +61,7 @@ export default function ManageNewChatConection(
 
     return(
         !initializing && fullChatData ?
-        <OpenChatInterface 
-        chatId={chatId}
-        fullChatData={fullChatData}
-        ws={ws}/> :
+        <OpenChatInterface ws={ws}/> :
 
         <div className="h-screen flex items-center justify-center text-center">
             {

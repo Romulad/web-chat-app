@@ -16,31 +16,26 @@ import {
 import ConnectedUserModal from "./connectedUserModal";
 import { defaultAppState, openChatConnectionMsgType } from "../../../lib/constant";
 import UserRequestsModal from "./userRequestsModal";
-import { Button, CenteredModalContainer, LocalMsgDisplay, RemoteMsgDisplay, TrashIcon } from "../../../components";
+import { Button, CenteredModalContainer, OpenChatMessageDisplay, TrashIcon } from "../../../components";
 import { deleteOpenChat } from "../../../api/actions/chat_actions";
 import { useNavigate } from "react-router-dom";
 import { openChatHomePath } from "../../../lib/paths";
+import { useChatDataContextValue } from "../../../context/chatDataContext";
 
 
 export default function OpenChatInterface(
-    {
-        fullChatData, 
-        ws,
-        chatId,
-    } : {
-        fullChatData: openChatRespDataScheme,
-        ws: WebSocket | undefined,
-        chatId: string,
-    }
+    { ws } : { ws: WebSocket | undefined }
 ){
+    const { chatId, fullChatData } = useChatDataContextValue()
+
     const isChatOwner = getChatData(chatId)?.isOwner;
     const userData = getUserOpenChatInfo();
     const navigate = useNavigate();
 
     const [userRequests, setUserRequests] = useState<Array<openChatRespDataScheme>>([]);
-    const [innerChatUsers, setInnerChatUsers] = useState(fullChatData.chat_users);
-    const [activeUsersIds, setActiveUsersIds] = useState(fullChatData.connected_users);
-    const [openChatMsgs, setOpenChatMsgs] = useState(fullChatData.chat_msgs || []);
+    const [innerChatUsers, setInnerChatUsers] = useState(fullChatData?.chat_users || []);
+    const [activeUsersIds, setActiveUsersIds] = useState(fullChatData?.connected_users || []);
+    const [openChatMsgs, setOpenChatMsgs] = useState(fullChatData?.chat_msgs || []);
 
     const [msg, setMsg] = useState('');
     const [deletingChat, setDeletingChat] = useState(false);
@@ -64,17 +59,21 @@ export default function OpenChatInterface(
                         return [...userRequests, data]
                     }
                 });
-                toast.info(`${data.user_name} is asking to join the chat`);
+                if(data.chat_id === chatId){
+                    toast.info(`${data.user_name} is asking to join the chat`);
+                }else{
+                    const chatData = getChatData(data.chat_id);
+                    toast.info(`${data.user_name} is asking to join ${chatData?.chatName || ""}`);
+                }
             }
             
             else if(
                 data?.type === openChatConnectionMsgType.notify_new_user
             ){
-                if(data.chat_users){
+                if(data.chat_id === chatId)
                     toast.info(`${data.user_name} join the chat`);
-                    setInnerChatUsers(data.chat_users);
-                    setActiveUsersIds(data.connected_users)
-                }
+                    setInnerChatUsers(data.chat_users || []);
+                    setActiveUsersIds(data.connected_users || [])
             }
             
             else if(
@@ -166,7 +165,7 @@ export default function OpenChatInterface(
         }, 5);
     }
 
-    function onSendBtnClick(ev: React.MouseEvent){
+    function onSendBtnClick(ev: React.MouseEvent | React.FormEvent){
         ev.preventDefault();
         if(!msg){
             return
@@ -220,26 +219,15 @@ export default function OpenChatInterface(
                 </div>}
             </div>
 
-            <div className="grow flex flex-col justify-between overflow-auto gap-3 pb-4 px-3">
+            <div className="grow flex flex-col justify-between overflow-auto gap-3 pb-6 px-3">
                 <div className="grow overflow-y-auto overflow-x-hidden flex flex-col gap-2 pe-3"
                 ref={msgContainerRef}>
-                    {openChatMsgs?.map((openChatMsg, index)=>{
-                        return userData?.userId === openChatMsg.sender_id ? (
-                            <LocalMsgDisplay 
-                            key={`${index}-${openChatMsg.sender_id}`}
-                            msg={openChatMsg.msg}
-                            name={openChatMsg.sender_name}/>
-                        ) : (
-                            <RemoteMsgDisplay 
-                            key={`${index}-${openChatMsg.sender_id}`}
-                            msg={openChatMsg.msg}
-                            name={openChatMsg.sender_name}
-                            /> 
-                        )
-                    })}
+                    <OpenChatMessageDisplay 
+                    openChatMsgs={openChatMsgs}/>
                 </div>
 
-                <div className="w-full flex items-center gap-3">
+                <form className="w-1/2 mx-auto flex items-center gap-3"
+                onSubmit={onSendBtnClick}>
                     <input type="text" 
                     placeholder="Type a message and click send"
                     className="w-full block p-4 bg-slate-100 rounded-full grow"
@@ -248,7 +236,7 @@ export default function OpenChatInterface(
                     onClick={onSendBtnClick} disabled={msg.length <= 0}>
                         Send
                     </button>
-                </div>
+                </form>
             </div>
         </div>
         

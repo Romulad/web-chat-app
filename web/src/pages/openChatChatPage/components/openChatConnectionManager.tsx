@@ -1,36 +1,33 @@
-import { openChatUser } from "../../../lib/definitions";
-import { getUserNotAllowedIds, getChatData } from "../../../lib/functions";
+import { 
+    getUserNotAllowedIds, 
+    getChatData, 
+} from "../../../lib/functions";
 import { OpenChatSideBar } from "../../../components";
 import ManageAddUserToChat from "./manageAddUserToChat";
 import ManageNewChatConection from "./manageNewChatConnection";
 import NotAllowedChatMsg from "./notAllowedChatMsg";
+import { useChatDataContextValue } from "../../../context/chatDataContext";
 
 
-export default function OpenChatConnectionManager(
-    { userData, chatId }: { userData: openChatUser, chatId: string }
-){
+export default function OpenChatConnectionManager(){
+    const { chatId } = useChatDataContextValue()
+
     const chatData = getChatData(chatId);
     const notAllowedChatIds = getUserNotAllowedIds();
 
     return(
         <div className="grid grid-cols-[300px_1fr] w-screen h-screen overflow-auto">
-            <OpenChatSideBar 
-            currentChatId={chatId}/>
+            <OpenChatSideBar />
 
             {notAllowedChatIds.includes(chatId) ? (
-                <NotAllowedChatMsg 
-                userId={userData.userId}/>
+                <NotAllowedChatMsg />
             ) : 
             
             chatData ? (
-                <ManageAddUserToChat 
-                chatData={chatData}
-                userData={userData}/>
+                <ManageAddUserToChat />
             ) : 
             
-            <ManageNewChatConection 
-            chatId={chatId}
-            userData={userData}/>}
+            <ManageNewChatConection />}
         </div>
     )
 }

@@ -2,12 +2,13 @@
 
 type RemoteMsgDisplayProps = {
     msg: string;
+    extraMsg?: string[];
     name?: string;
     showIcon?: boolean
 }
 
 export default function RemoteMsgDisplay(
-    {name, msg, showIcon}: RemoteMsgDisplayProps
+    {name, msg, showIcon, extraMsg}: RemoteMsgDisplayProps
 ){
     return(
         <div className="me-auto max-w-96 flex items-start gap-2">
@@ -16,15 +17,25 @@ export default function RemoteMsgDisplay(
                 {name.charAt(0).toUpperCase()}
             </div>}
 
-            <div className="mt-5 bg-slate-100 rounded-tr-xl rounded-bl-xl rounded-br-xl p-4 pt-1">
-                {name &&
-                <span className="font-semibold">
-                    {name}
-                </span>}
+            <div>
+                <div className="mt-5 bg-slate-100 rounded-tr-xl rounded-bl-xl rounded-br-xl p-4 pt-1">
+                    {name &&
+                    <span className="font-bold">
+                        {name}
+                    </span>}
 
-                <p className="mt-3">
-                    {msg}
-                </p>
+                    <p className="mt-3">
+                        {msg}
+                    </p>
+                </div>
+
+                {extraMsg && extraMsg.length &&
+                extraMsg.map((msg, index)=>(
+                    <div key={index}
+                    className="mt-1 bg-slate-100 rounded-tr-xl rounded-bl-xl rounded-br-xl p-4 pt-1">
+                        {msg}
+                    </div>
+                ))}
             </div>
         </div>
     )

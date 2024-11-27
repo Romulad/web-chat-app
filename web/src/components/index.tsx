@@ -5,6 +5,7 @@ import Button from "./button/index.tsx";
 import LocalMsgDisplay from "./localMsgDisplay/index.tsx";
 import RemoteMsgDisplay from "./remoteMsgDisplay/index.tsx";
 import OpenChatSideBar from "./openChatSideBar/openChatSideBar.tsx";
+import OpenChatMessageDisplay from "./messagesDisplay/index.tsx";
 
 export * from "./icons"
 export {
@@ -14,5 +15,6 @@ export {
     Button,
     LocalMsgDisplay,
     RemoteMsgDisplay,
-    OpenChatSideBar
+    OpenChatSideBar,
+    OpenChatMessageDisplay
 }
