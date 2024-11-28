@@ -11,6 +11,7 @@ import { CenteredModalContainer, LabelInput } from "../../components";
 import classes from "../../lib/classes";
 import OpenChatConnectionManager from "./components/openChatConnectionManager";
 import { ChatDataContextProvider } from "../../context/chatDataContext";
+import { MobileUiStateContextProvider } from "../../context/mobileUiStateContext";
 
 
 export default function OpenChatChatPage(){
@@ -34,8 +35,12 @@ export default function OpenChatChatPage(){
 
     return(
         userData ? (
-            <ChatDataContextProvider chatId={chatId || null}>
-                <OpenChatConnectionManager key={chatId}/>
+            <ChatDataContextProvider 
+            chatId={chatId || null} 
+            key={chatId}>
+                <MobileUiStateContextProvider>
+                    <OpenChatConnectionManager key={chatId}/>
+                </MobileUiStateContextProvider>
             </ChatDataContextProvider>
         ) : (
             <CenteredModalContainer closeModal={()=>{}} showModal={true}>

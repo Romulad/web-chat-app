@@ -28,7 +28,7 @@ export default function OpenChatMessageDisplay(
         }
 
         const lastMsg = msgsList[msgsList.length - 1];
-        if(lastMsg.sender_id === lastMsgUserId){
+        if(lastMsg.sender_id === data.sender_id){
             const updatedMsg = {
                 ...lastMsg, 
                 extraMsg: [...(lastMsg?.extraMsg || []), data.msg]

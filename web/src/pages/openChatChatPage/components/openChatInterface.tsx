@@ -16,17 +16,19 @@ import {
 import ConnectedUserModal from "./connectedUserModal";
 import { defaultAppState, openChatConnectionMsgType } from "../../../lib/constant";
 import UserRequestsModal from "./userRequestsModal";
-import { Button, CenteredModalContainer, OpenChatMessageDisplay, TrashIcon } from "../../../components";
+import { Button, CenteredModalContainer, OpenChatMessageDisplay, ThreeHorizontalDash, TrashIcon } from "../../../components";
 import { deleteOpenChat } from "../../../api/actions/chat_actions";
 import { useNavigate } from "react-router-dom";
 import { openChatHomePath } from "../../../lib/paths";
 import { useChatDataContextValue } from "../../../context/chatDataContext";
+import { useMobileUiContext } from "../../../context/mobileUiStateContext";
 
 
 export default function OpenChatInterface(
     { ws } : { ws: WebSocket | undefined }
 ){
-    const { chatId, fullChatData } = useChatDataContextValue()
+    const { chatId, fullChatData } = useChatDataContextValue();
+    const { toggleChartInterface, showChatInterface } = useMobileUiContext();
 
     const isChatOwner = getChatData(chatId)?.isOwner;
     const userData = getUserOpenChatInfo();
@@ -112,7 +114,9 @@ export default function OpenChatInterface(
                     performAfterChatDeletion()
                 }, 1000);
             }
-        })
+        });
+
+        showContainerLastMsg();
     }, [])
 
 
@@ -191,42 +195,51 @@ export default function OpenChatInterface(
 
     return(
         <>
-        <div className="flex flex-col gap-5 h-screen">
+        <div className={`${showChatInterface ? "flex" : "hidden"} md:flex flex-col gap-5 h-screen`}>
             <div className="flex justify-between items-center px-4 py-3 shadow ">
                 <button className=" flex flex-col"
                 onClick={toggleUserListModal}>
                     <p className="sm:text-lg">
-                        {chatId}
+                        {chatId.slice(0, 15) + "..."}
                     </p>
                     <p className="text-start text-sm text-gray-600">
-                        <b>connected users:</b> {activeUsersIds?.length || 0}
+                        <b>connected:</b> {activeUsersIds?.length || 0}
                     </p>
                 </button>
 
-                {isAdmin(userData?.userId || "") &&
-                <div className="flex items-center gap-3">
-                    <button onClick={toggleDeleteChatModal}>
-                        <TrashIcon 
-                        className="size-6 text-red-500"/>
+                <div className="flex gap-2 items-center">
+                    <button onClick={toggleChartInterface} className="md:hidden">
+                        <ThreeHorizontalDash 
+                        className="size-6"/>
                     </button>
 
-                    <button className="relative"
-                    onClick={toggleUserRequestModal}>
-                        <div className={`border-2 px-2 py-1 rounded-full ${userRequests.length ? "border-red-500" : ""}`}>
-                            {userRequests.length}
-                        </div>
-                    </button>
-                </div>}
+                    {isAdmin(userData?.userId || "") &&
+                    <div className="flex items-center gap-3">
+                        <button className="relative"
+                        onClick={toggleUserRequestModal}>
+                            <div className={`border-2 px-2 py-1 rounded-full ${userRequests.length ? "border-red-500" : ""}`}>
+                                {userRequests.length}
+                            </div>
+                        </button>
+
+                        <button onClick={toggleDeleteChatModal}>
+                            <TrashIcon 
+                            className="size-6 text-red-500"/>
+                        </button>
+                    </div>}
+                </div>
             </div>
 
             <div className="grow flex flex-col justify-between overflow-auto gap-3 pb-6 px-3">
-                <div className="grow overflow-y-auto overflow-x-hidden flex flex-col gap-2 pe-3"
+                <div className="grow overflow-y-auto overflow-x-hidden "
                 ref={msgContainerRef}>
-                    <OpenChatMessageDisplay 
-                    openChatMsgs={openChatMsgs}/>
+                    <div className="xl:w-3/4 mx-auto flex flex-col gap-2 pe-3">
+                        <OpenChatMessageDisplay 
+                        openChatMsgs={openChatMsgs}/>
+                    </div>
                 </div>
 
-                <form className="w-1/2 mx-auto flex items-center gap-3"
+                <form className="w-[95%] md:w-5/6 lg:w-3/4 2xl:w-1/2 mx-auto flex items-center gap-3"
                 onSubmit={onSendBtnClick}>
                     <input type="text" 
                     placeholder="Type a message and click send"
