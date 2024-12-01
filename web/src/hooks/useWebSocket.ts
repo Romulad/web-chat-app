@@ -12,14 +12,20 @@ export default function useWebSocket(
     const [isInAction, setIsInAction] = useState(false);
     const [initializing, setInitializing] = useState(false);
     const ws = useRef<WebSocket>();
+    const connectionPool = useRef<WebSocket[]>([]);
     const retryCount = useRef(0);
     const currentTimeOut = useRef<number>();
     
     useEffect(()=>{
        function establishConnection(){
+        if(ws.current) return;
+
         setInitializing(true);
         setIsInAction(true);
+        
         const websocket = new WebSocket(url);
+        // maintain connection list when more than one connections are initialized
+        connectionPool.current = [...connectionPool.current, websocket];
 
         websocket.addEventListener('open', (ev)=>{
             ws.current = websocket;
@@ -52,7 +58,7 @@ export default function useWebSocket(
             setIsInAction(false);
             if(retryCount.current <= 10){
                 currentTimeOut.current = setTimeout(() => {
-                    if(!ws){
+                    if(!ws.current){
                         toast.info('Attempting connection again...');
                         establishConnection();
                     }
@@ -64,7 +70,12 @@ export default function useWebSocket(
 
        establishConnection()
 
-        return () => { ws.current?.close(), clearTimeout(currentTimeOut.current) }
+        return () => { 
+            connectionPool.current.forEach((connection)=>{
+                connection.close()
+            });
+            clearTimeout(currentTimeOut.current);
+        }
     }, [url])
 
     return {

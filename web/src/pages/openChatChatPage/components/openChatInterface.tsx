@@ -14,10 +14,9 @@ import {
     parseSocketData 
 } from "../../../lib/functions";
 import ConnectedUserModal from "./connectedUserModal";
-import { defaultAppState, openChatConnectionMsgType } from "../../../lib/constant";
+import { openChatConnectionMsgType } from "../../../lib/constant";
 import UserRequestsModal from "./userRequestsModal";
-import { Button, CenteredModalContainer, OpenChatMessageDisplay, ThreeHorizontalDash, TrashIcon } from "../../../components";
-import { deleteOpenChat } from "../../../api/actions/chat_actions";
+import { DeleteChatModal, OpenChatMessageDisplay, ThreeHorizontalDash, TrashIcon } from "../../../components";
 import { useNavigate } from "react-router-dom";
 import { openChatHomePath } from "../../../lib/paths";
 import { useChatDataContextValue } from "../../../context/chatDataContext";
@@ -40,7 +39,6 @@ export default function OpenChatInterface(
     const [openChatMsgs, setOpenChatMsgs] = useState(fullChatData?.chat_msgs || []);
 
     const [msg, setMsg] = useState('');
-    const [deletingChat, setDeletingChat] = useState(false);
 
     const [showUserListModal, setShowUserListModal] = useState(false);
     const [showUserRequestsModal, setShowUserRequestsModal] = useState(false);
@@ -117,6 +115,7 @@ export default function OpenChatInterface(
         });
 
         showContainerLastMsg();
+
     }, [])
 
 
@@ -178,19 +177,6 @@ export default function OpenChatInterface(
         sendMsg();
         setMsg('');
         showContainerLastMsg()
-    }
-
-    function deleteChat(){
-        setDeletingChat(true);
-        deleteOpenChat(chatId, userData?.userId || "")
-        .then((resp)=>{
-            setDeletingChat(false);
-            const {reqState} = resp;
-            if(reqState === defaultAppState.success){
-                toast.success('Chat deleted Successfully');
-                performAfterChatDeletion()
-            }
-        })
     }
 
     return(
@@ -266,29 +252,14 @@ export default function OpenChatInterface(
         ws={ws}
         setUserRequests={setUserRequests}/>
 
-        <CenteredModalContainer
+        <DeleteChatModal 
+        chatId={chatId}
         closeModal={toggleDeleteChatModal}
-        showModal={showDeleteChatModal}>
-            <div className="bg-white rounded-lg p-4">
-                <h1 className="text-lg mb-5 font-bold ">Delete Chat</h1>
-                <p className="text-center">
-                    Are you sure you want to delete the chat?
-                </p>
-
-                <div className="flex justify-between mt-5">
-                    <button className={classes.btn.outlined}
-                    onClick={toggleDeleteChatModal}>
-                        Cancel
-                    </button>
-                    <Button 
-                    className={classes.btn.red}
-                    defaultText="Yes, delete"
-                    isInAction={deletingChat}
-                    isInActionText="Deleting"
-                    onClick={deleteChat}/>
-                </div>
-            </div>
-        </CenteredModalContainer>
+        isOwner={getChatData(chatId)?.isOwner || false}
+        showModal={showDeleteChatModal}
+        userId={userData?.userId || ""}
+        performAfterDeletion={performAfterChatDeletion}
+        />
         </>
     )
 }

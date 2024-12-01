@@ -15,20 +15,22 @@ export default function HomePage(){
 
     return(
         <>
-        <div className="text-lg bg-gray-100 grid h-screen overflow-hidden items-center justify-center landing-page-bg">
-            <motion.button 
-            className={`${classes.btn.green} shadow-lg`}
-            onClick={toggleNewChatModal}
-            initial={{ y: 0 }}
-            animate={{ y: [0, -30, 0] }}
-            transition={{
-                duration: 2, 
-                repeat: Infinity, 
-                repeatType: "loop",
-                ease: "easeInOut"
-            }}>
-                Start a new chat
-            </motion.button>
+        <div className="text-lg landing-page-bg bg-gray-100 grid h-screen overflow-hidden items-center justify-center">
+            <div>
+                <motion.button 
+                className={`${classes.btn.green} shadow-lg`}
+                onClick={toggleNewChatModal}
+                initial={{ y: 0 }}
+                animate={{ y: [0, -30, 0] }}
+                transition={{
+                    duration: 4, 
+                    repeat: Infinity, 
+                    repeatType: "loop",
+                    ease: "easeInOut"
+                }}>
+                    Start a new chat
+                </motion.button>
+            </div>
         </div>
 
         <Overlay 

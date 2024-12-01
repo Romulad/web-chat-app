@@ -7,6 +7,7 @@ import RemoteMsgDisplay from "./remoteMsgDisplay/index.tsx";
 import OpenChatSideBar from "./openChatSideBar/openChatSideBar.tsx";
 import OpenChatMessageDisplay from "./messagesDisplay/index.tsx";
 import JoinNewChatModal from "./joinNewChatModal/index.tsx";
+import DeleteChatModal from "./deleteChatModal/index.tsx";
 
 export * from "./icons"
 export {
@@ -18,5 +19,6 @@ export {
     RemoteMsgDisplay,
     OpenChatSideBar,
     OpenChatMessageDisplay,
-    JoinNewChatModal
+    JoinNewChatModal,
+    DeleteChatModal
 }

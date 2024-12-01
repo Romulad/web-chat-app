@@ -10,9 +10,9 @@ import router from './router';
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <Suspense fallback={"Loading"}>
+    <Suspense fallback={<div className='text-lg grid h-screen items-center justify-center animate-pulse'>Loading...</div>}>
       <RouterProvider router={router}/>
-      <ToastContainer 
+      <ToastContainer
       position="bottom-center"/>
     </Suspense>
   </StrictMode>,

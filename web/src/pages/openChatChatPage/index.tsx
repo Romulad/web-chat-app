@@ -35,9 +35,7 @@ export default function OpenChatChatPage(){
 
     return(
         userData ? (
-            <ChatDataContextProvider 
-            chatId={chatId || null} 
-            key={chatId}>
+            <ChatDataContextProvider chatId={chatId || null} key={chatId}>
                 <MobileUiStateContextProvider>
                     <OpenChatConnectionManager key={chatId}/>
                 </MobileUiStateContextProvider>
