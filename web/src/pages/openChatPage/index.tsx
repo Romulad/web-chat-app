@@ -18,7 +18,7 @@ export default function OpenChatPage(){
     return(
         <>
         <div className="h-screen overflow-hidden landing-page-bg bg-slate-100 flex items-center">
-            <div className="sm:w-[500px] sm:mx-auto mx-3 max-h-[500px] overflow-auto mt-10 bg-white shadow-lg rounded-lg p-4">
+            <div className="w-full sm:w-[500px] sm:mx-auto mx-3 max-h-[500px] overflow-auto mt-10 bg-white shadow-lg rounded-lg p-4">
                 {chatData && chatData.length ?(
                     <ul className="divide-y-2">
                 {chatData?.map((data)=>(
