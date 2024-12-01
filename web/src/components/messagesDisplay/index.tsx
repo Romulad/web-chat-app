@@ -18,12 +18,10 @@ export default function OpenChatMessageDisplay(
 ){
     const userData = getUserOpenChatInfo();
     const msgsList : completeMsgType[] = [];
-    let lastMsgUserId = "";
     
     openChatMsgs.map((data)=>{
         if(msgsList.length <= 0){
             msgsList.push(data)
-            lastMsgUserId = data.sender_id;
             return
         }
 
@@ -33,13 +31,11 @@ export default function OpenChatMessageDisplay(
                 ...lastMsg, 
                 extraMsg: [...(lastMsg?.extraMsg || []), data.msg]
             }
-            lastMsgUserId = data.sender_id;
             msgsList.splice(msgsList.length - 1, 1, updatedMsg)
             return
         }
 
         msgsList.push(data)
-        lastMsgUserId = data.sender_id;        
     })
 
     return(
