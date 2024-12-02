@@ -13,7 +13,6 @@ from ..schemas import OpenChatUser
 
 router = APIRouter(prefix="/open-chat")
 
-
 @router.post(
     "/init", 
     status_code=status.HTTP_201_CREATED, 
