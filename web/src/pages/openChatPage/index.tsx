@@ -8,7 +8,7 @@ import classes from "../../lib/classes";
 
 export default function OpenChatPage(){
     const chatData = getUseropenChatData();
-    const [chatId, setChatId] = useState("");
+    const [chatId, setChatId] = useState<string>("");
     const [showDeleteChatModal, setDeleteChatModal] = useState(false);
 
     function toggleDeleteChatModal(){
