@@ -18,7 +18,7 @@ export default function OpenChatChatPage(){
     const { chatId } = useParams();
     const userInfo = getUserOpenChatInfo();
     const [userData, setUserData] = useState(userInfo)
-    const [name, setName] = useState('');
+    const [name, setName] = useState<string>('');
     const [nameError, setNameError] = useState('');
 
     function onSaveNameBtnClick(){
