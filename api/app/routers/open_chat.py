@@ -88,3 +88,4 @@ async def open_chat_messages(
             await open_chat_manager.on_new_message(websocket)
     except WebSocketDisconnect:
         await open_chat_manager.disconnect_websocket(websocket, chat_id, user_id)
+
