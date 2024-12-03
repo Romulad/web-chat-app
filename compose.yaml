@@ -1,0 +1,48 @@
+name: open-chat-app
+  
+services:
+  redis:
+    image: redis
+    container_name: redis
+    networks:
+      - open-chat-net
+
+  api:
+    image: api
+    build:
+      context: ./api
+      dockerfile: ./docker/api.Dockerfile
+    container_name: api
+    networks:
+      - open-chat-net
+    env_file:
+      - ./.env
+    depends_on:
+      - redis
+
+  api-nginx:
+    image: api-nginx
+    build:
+      context: ./api
+      dockerfile: ./docker/api.nginx.Dockerfile
+    networks:
+      - open-chat-net
+    depends_on:
+      - api
+    
+  web:
+    image: web
+    build:
+      context: ./web
+      dockerfile: ./docker/web.Dockerfile
+    container_name: web
+    networks:
+      - open-chat-net
+    depends_on:
+      - api-nginx
+    ports:
+      - 80:80
+
+networks:
+  open-chat-net:
+    driver: bridge
