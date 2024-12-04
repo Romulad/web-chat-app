@@ -19,16 +19,6 @@ services:
       - ./.env
     depends_on:
       - redis
-
-  api-nginx:
-    image: api-nginx
-    build:
-      context: ./api
-      dockerfile: ./docker/api.nginx.Dockerfile
-    networks:
-      - open-chat-net
-    depends_on:
-      - api
     
   web:
     image: web
@@ -39,9 +29,20 @@ services:
     networks:
       - open-chat-net
     depends_on:
-      - api-nginx
-    ports:
-      - 80:80
+      - api
+      - redis
+  
+  nginx:
+    image: nginx
+    build:
+      context: .
+      dockerfile: ./docker/nginx.Dockerfile
+    container_name: nginx
+    networks:
+      - open-chat-net
+    depends_on:
+      - api
+      - web
 
 networks:
   open-chat-net:
