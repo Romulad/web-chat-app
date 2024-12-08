@@ -4,6 +4,7 @@ services:
   redis:
     image: redis
     container_name: redis
+    restart: always
     networks:
       - open-chat-net
 
@@ -19,6 +20,7 @@ services:
       - ./.env
     depends_on:
       - redis
+    restart: on-failure:10
     
   web:
     image: web
@@ -31,11 +33,12 @@ services:
     depends_on:
       - api
       - redis
+    restart: on-failure:10
   
   nginx:
     image: nginx
     build:
-      context: .
+      context: ./nginx
       dockerfile: ./docker/nginx.Dockerfile
     container_name: nginx
     networks:
@@ -43,6 +46,8 @@ services:
     depends_on:
       - api
       - web
+    restart: on-failure:5
+    
 
 networks:
   open-chat-net:
