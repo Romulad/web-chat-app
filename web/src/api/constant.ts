@@ -1,13 +1,14 @@
-export const BASE_ROUTE = location.href.includes('localhost') ? "http://127.0.0.1:8000/" : "https://web-chat-app-0r03.onrender.com/";
+export const BASE_ROUTE = location.href.includes('localhost') ? 
+    "http://127.0.0.1:8000/" : "https://ec2-35-180-138-45.eu-west-3.compute.amazonaws.com/open-chat-api/";
 
 export const getBaseRoute = (forSocket=false) => {
     if(forSocket){
         return location.href.includes('localhost') ? 
         "ws://127.0.0.1:8000/" : 
-        "wss://web-chat-app-0r03.onrender.com/";
+        "wss://ec2-35-180-138-45.eu-west-3.compute.amazonaws.com/open-chat-api/";
     }else{
         return location.href.includes('localhost') ? 
         "http://127.0.0.1:8000/" : 
-        "https://web-chat-app-0r03.onrender.com/";
+        "https://ec2-35-180-138-45.eu-west-3.compute.amazonaws.com/open-chat-api/";
     }
 }

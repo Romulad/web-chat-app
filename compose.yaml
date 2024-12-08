@@ -2,7 +2,7 @@ name: open-chat-app
   
 services:
   redis:
-    image: redis
+    image: redis:7.4.1-alpine
     container_name: redis
     restart: always
     networks:
