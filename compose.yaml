@@ -43,11 +43,12 @@ services:
     container_name: nginx
     networks:
       - open-chat-net
+    ports:
+      - 80:80
     depends_on:
       - api
       - web
     restart: on-failure:5
-    
 
 networks:
   open-chat-net:
