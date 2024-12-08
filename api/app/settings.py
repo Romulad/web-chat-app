@@ -1,9 +1,9 @@
-IN_PRODUCTION = False
-TESTING = True
+IN_PRODUCTION = True
+TESTING = False
 
 if IN_PRODUCTION:
     OROGINS = [
-        "https://chat-ro.onrender.com",
+        "https://ec2-35-180-138-45.eu-west-3.compute.amazonaws.com",
     ]
 else:
     OROGINS = [

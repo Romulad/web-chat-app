@@ -1,6 +1,6 @@
 #!/bin/sh
 
-hosts="alpinelinux.org"
+hosts="ec2-35-180-138-45.eu-west-3.compute.amazonaws.com"
 
 for host in $hosts; do
         acme-client -a https://letsencrypt.org/documents/LE-SA-v1.2-November-15-2017.pdf -Nnmv $host && renew=1
