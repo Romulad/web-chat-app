@@ -3,4 +3,3 @@ venv
 .coverage
 htmlcov
 .dockerignore
-.env

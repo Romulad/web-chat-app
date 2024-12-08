@@ -12,12 +12,12 @@ services:
     image: api
     build:
       context: ./api
-      dockerfile: ./docker/api.Dockerfile
+      dockerfile: ../docker/api.Dockerfile
     container_name: api
     networks:
       - open-chat-net
     env_file:
-      - ./.env
+      - ./api/.env
     depends_on:
       - redis
     restart: on-failure:10
@@ -26,7 +26,7 @@ services:
     image: web
     build:
       context: ./web
-      dockerfile: ./docker/web.Dockerfile
+      dockerfile: ../docker/web.Dockerfile
     container_name: web
     networks:
       - open-chat-net
@@ -39,7 +39,7 @@ services:
     image: nginx
     build:
       context: ./nginx
-      dockerfile: ./docker/nginx.Dockerfile
+      dockerfile: ../docker/nginx.Dockerfile
     container_name: nginx
     networks:
       - open-chat-net
