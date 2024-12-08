@@ -1,3 +1,3 @@
 FROM nginx:1.27.1-alpine
 
-COPY nginx.conf /etc/nginx/conf.d/nginx.site.conf
+COPY ./nginx.site.conf /etc/nginx/conf.d/nginx.site.conf
