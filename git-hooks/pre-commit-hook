@@ -1,0 +1,41 @@
+#!/bin/bash
+
+file_names=$(git diff --cached --name-only)
+api_files_was_changed="false"
+
+for file_name in $file_names
+do
+	if [[ "$file_name" == "api/"* ]]
+	then
+		api_files_was_changed="true"
+		break
+	fi
+done
+
+if [[ "$api_files_was_changed" == "false" ]]
+then
+	exit 0
+fi
+
+project_root=$(git rev-parse --show-toplevel)
+
+cd "$project_root/api" || exit 1
+
+source "venv/Scripts/activate" || exit 1
+
+if command -v coverage >/dev/null 2>&1 && command -v pytest >/dev/null 2>&1
+then
+	coverage run -m pytest
+	if [ $? -eq 0 ]
+	then
+		deactivate
+		exit 0
+	else
+		deactivate
+		exit 1
+	fi
+else
+	echo "Coverage or pytest is not installed"
+	deactivate
+	exit 1
+fi
