@@ -1,12 +1,12 @@
 FROM nginx:1.27.1-alpine
 
-RUN apk update && apk add certbot
+# RUN apk update && apk add certbot
 
-COPY ssl-params.inc /etc/nginx/conf.d/ssl-params.inc
+# COPY ssl-params.inc /etc/nginx/conf.d/ssl-params.inc
 
-COPY acme.inc /etc/nginx/conf.d/acme.inc
+# COPY acme.inc /etc/nginx/conf.d/acme.inc
 
-RUN sudo certbot certonly --nginx --non-interactive --agree-tos --email myservicemailshome@gmail.com --domains ec2-35-180-138-45.eu-west-3.compute.amazonaws.com
+# RUN certbot certonly --webroot -w /usr/share/nginx/html --non-interactive --agree-tos --email myservicemailshome@gmail.com --domains ec2-35-180-138-45.eu-west-3.compute.amazonaws.com
 
 # COPY acme-client /etc/periodic/weekly/acme-client
 

@@ -3,7 +3,7 @@ TESTING = False
 
 if IN_PRODUCTION:
     OROGINS = [
-        "https://ec2-35-180-138-45.eu-west-3.compute.amazonaws.com",
+        "http://ec2-35-180-138-45.eu-west-3.compute.amazonaws.com",
     ]
 else:
     OROGINS = [
