@@ -15,4 +15,4 @@ EXPOSE 8000
 
 USER api-user
 
-CMD [ "fastapi", "run" ]
+CMD [ "fastapi", "run", "--root-path", "/open-chat-api" ]
