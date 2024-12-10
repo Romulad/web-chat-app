@@ -4,20 +4,17 @@
 ## You can:
 - Create a chat and get a link
 - Share chat link with friends to invite them to join, as many as you want
-- Approve join request, to allow other to be added to the chat
+- Approve join request, to allow others to be added to the chat
 - Chat and have fun
-- Once done, as chat owner, with just a click, delete the chat and all related data.
+- As the chat owner, you can delete the chat and all related data with just a click once you're done
 
 
-Live version : [click here(over http, don't enter sensitive data)](http://ec2-35-180-138-45.eu-west-3.compute.amazonaws.com)
+**Live version:** [click here(over http, avoid entering sensitive informationa)](http://ec2-35-180-138-45.eu-west-3.compute.amazonaws.com)
 
 
 ## Technologies
-1. **TypeScript**/**React**
-2. **Tailwind CSS**
-3. **Python**/**FastApi**
-4. **Websocket**
-5. **Redis**
+- **Frontend**: TypeScript, React, Tailwind CSS
+- **Backend**: Python, FastAPI, WebSocket, Redis
 
 
 ## Run locally
@@ -41,13 +38,14 @@ git clone https://github.com/Romulad/web-chat-app.git
   cd web-chat-app
 ```
 
-***important***: You need to provide redis connection details in a `.env` file within the `api` directory. Take `.env.template` file under the `api` directory as an example.
+***important***: You need to provide redis connection details in a `.env` file within the `api` directory. 
+Use the `.env.template` file under the `api` directory as an example. The next instructions assume you did this!
 
-[Redis](https://redis.io)
+[Redis](https://redis.io/docs/latest/operate/oss_and_stack/install/)
 
 
 ### Using Docker compose
-The app includes Docker compose files for production like environment without ssl, thus over http only
+The app includes Docker compose file for production like environment without ssl, over http only
 
 You need to have :
 
@@ -70,16 +68,47 @@ Visit `localhost` to view the app.
 
 ### By setting up the dev environment
 To run this app locally make sure you have the following prerequisites on your system:
-- [Node.js](https://nodejs.org/en/download/current), this include `npm` (Node Package Manager) will be use to run the app. 
-- [Python](https://nodejs.org/en/download/current), this include `npm` (Node Package Manager) will be use to run the app. 
-- [Redis](https://nodejs.org/en/download/current), this include `npm` (Node Package Manager) will be use to run the app. 
+- [Node.js](https://nodejs.org/en/download/current), this include `npm` (Node Package Manager) will be used to 
+run the [React app](https://react.dev) (Front-end). 
+- [Python intepreter](https://www.python.org/downloads/), will be used to run the [FastApi app](https://fastapi.tiangolo.com/) (API). 
 
 
-#### Install dependencies and run the app
-In your terminal :
-- Navigate to the new directory created by running:
+#### Install dependencies and run the FastApi app
+In a terminal :
+- Navigate to the `api` subdirectory under the project root directory:
 ```bash
-  cd figma-to-code-ed2-week3
+  cd api
+```
+- Create a virtual environment:
+```bash
+  python -m venv venv
+```
+- Activate the virtual environment:
+  1. On windows
+```bash
+  .\venv\Scripts\activate
+```
+  2. On macOS/Linux:
+```bash
+  source venv/bin/activate/
+```
+- Install the required packages:
+```bash
+  pip install -r requirements.txt
+```
+- once the installation is completed start the app with:
+```bash
+  fastapi dev
+```
+  
+Visit `localhost:8000/docs` to view the api doc, next step to see the full app.
+
+
+#### Install dependencies and run the front-end :
+In a new terminal :
+- Navigate to the `web` directory by running:
+```bash
+  cd web
 ```
 - install the necessary packages by running this command:
 ```bash
