@@ -31,22 +31,23 @@ jobs:
 
       - name: Login to the ec2 using ssh, rebuild images, run containers
         run: |
-          ssh -i ~/ec2-pem.pem ${{ secrets.ec2_username }}@${{ secrets.ec2_domaine }}
+          ssh -i ~/ec2-pem.pem ${{ secrets.ec2_username }}@${{ secrets.ec2_domaine }} << 'EOF'
 
-          cd web-chat-app
+            cd web-chat-app
 
-          docker compose down
+            docker compose down
 
-          docker system prune -af
+            docker system prune -af
 
-          cd ..
+            cd ..
 
-          rm -rf web-chat-app
+            rm -rf web-chat-app
 
-          git clone https://github.com/Romulad/web-chat-app
+            git clone https://github.com/Romulad/web-chat-app
 
-          cat env-file > web-chat-app/api/.env
+            cat env-file > web-chat-app/api/.env
 
-          cd web-chat-app
+            cd web-chat-app
 
-          docker compose up -d
+            docker compose up -d
+          EOF
