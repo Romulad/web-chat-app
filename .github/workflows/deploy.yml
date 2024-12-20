@@ -10,9 +10,11 @@ jobs:
     name: Deploy on aws ec2 instance
     runs-on: ubuntu-24.04
     steps:
-      - name: Set up ssh and pem file
+      - name: Set up ssh
         run: |
           sudo apt update -y 
+
+          sudo apt upgrade -y
 
           sudo apt install ssh
 
@@ -22,8 +24,9 @@ jobs:
           
           sudo ufw allow ssh && sudo ufw enable
 
-          echo ${{ secrets.openchat_ec2_key }} > ~/ec2-pem.pem
-
+      - name: Set pem file
+        run: |
+          echo "${{ secrets.openchat_ec2_key }}" > ~/ec2-pem.pem
           chmod 400 ~/ec2-pem.pem
 
       - name: Login to the ec2 using ssh, rebuild images, run containers
