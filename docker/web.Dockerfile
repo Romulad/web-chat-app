@@ -15,7 +15,9 @@ RUN npm run build
 # Nginx server
 FROM nginx:1.27.1-alpine
 
-COPY --from=build-stage /app/dist /usr/share/nginx/html
+RUN mkdir -p /var/data/www
+
+COPY --from=build-stage /app/dist /var/data/www
 
 COPY nginx.conf /etc/nginx/conf.d/nginx.conf
 
