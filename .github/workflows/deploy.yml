@@ -22,13 +22,13 @@ jobs:
           
           sudo ufw allow ssh && sudo ufw enable
 
-          echo ${{ secrets.openchat_ec2_key }} > ~/.ssh/ec2-pem.pem
+          echo ${{ secrets.openchat_ec2_key }} > ~/ec2-pem.pem
 
-          chmod 400 ~/.ssh/ec2-pem.pem
+          chmod 400 ~/ec2-pem.pem
 
       - name: Login to the ec2 using ssh, rebuild images, run containers
         run: |
-          ssh -i ~/.ssh/ec2-pem.pem ${{ secrets.ec2_username }}@${{ secrets.ec2_domaine }}
+          ssh -i ~/ec2-pem.pem ${{ secrets.ec2_username }}@${{ secrets.ec2_domaine }}
 
           cd web-chat-app
 
@@ -47,4 +47,3 @@ jobs:
           cd web-chat-app
 
           docker compose up -d
-
