@@ -11,6 +11,8 @@
 
 **Live version:** [click here(over http, avoid entering sensitive informationa)](http://ec2-35-180-138-45.eu-west-3.compute.amazonaws.com)
 
+[![Watch the video](https://img.youtube.com/vi/jxiMnjLykxo/hqdefault.jpg)](https://www.youtube.com/watch?v=jxiMnjLykxo)
+
 
 ## Technologies
 - **Frontend**: TypeScript, React, Tailwind CSS
